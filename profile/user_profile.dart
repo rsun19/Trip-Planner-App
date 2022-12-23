@@ -67,89 +67,70 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   @override
   void initState() {
-    sortList();
+    sortedList();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          title: Text(
-            '${widget.trip.title}',
-            style: TextStyle(
-              color: Colors.white,
-              letterSpacing: 2.0,
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return UserFormCase(trip: widget.trip);
-                }));
-              },
-              child: Text(
-                'Add More Events',
+    return SafeArea(
+        top: true,
+        child: Scaffold(
+            appBar: AppBar(
+              elevation: 0,
+              title: Text(
+                '${widget.trip.title}',
                 style: TextStyle(
                   color: Colors.white,
-                  letterSpacing: 2,
+                  letterSpacing: 2.0,
                 ),
               ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) {
+                      return UserFormCase(trip: widget.trip);
+                    }));
+                  },
+                  child: Text(
+                    'Add More Events',
+                    style: TextStyle(
+                      color: Colors.white,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        backgroundColor: Colors.blue,
-        body: Container(
-            child: new ListView.builder(
-                itemCount: eventSortedDates.length,
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                itemBuilder: (context, index) {
-                  return Center(
-                      key: new Key(index.toString()),
-                      child: eventInfo(
-                        tripevent: eventSortedDates[index],
-                        trip: widget.trip,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    UserFormCase(trip: widget.trip)),
-                          ).then((_) {
-                            sortList();
-                          });
-                        },
-                      ));
-                })));
-  }
-
-  Widget listView() {
-    //edit by sorting list first, then executing.
-    return new ListView.builder(
-        itemCount: eventSortedDates.length,
-        shrinkWrap: true,
-        // physics: ClampingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-        itemBuilder: (context, index) {
-          return Center(
-              key: new Key(index.toString()),
-              child: eventInfo(
-                tripevent: eventSortedDates[index],
-                trip: widget.trip,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => UserFormCase(trip: widget.trip)),
-                  ).then((_) {
-                    sortList();
-                  });
-                },
-              ));
-        });
+            backgroundColor: Colors.blue,
+            body: SizedBox(
+                height: 1000,
+                width: 1000,
+                child: ListView.builder(
+                    itemCount: eventSortedDates.length,
+                    shrinkWrap: true,
+                    //physics: NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                    itemBuilder: (context, index) {
+                      return Center(
+                          key: new Key(index.toString()),
+                          child: eventInfo(
+                            tripevent: eventSortedDates[index],
+                            trip: widget.trip,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => EventView(
+                                        trip: widget.trip,
+                                        tripevent: eventSortedDates[index])),
+                              ).then((_) {
+                                sortedList();
+                              });
+                            },
+                          ));
+                    }))));
   }
 }
 
@@ -176,6 +157,7 @@ class _eventInfoState extends State<eventInfo> {
   late var date = DateFormat("MM/dd/yyyy").format(_date);
   late var _time = DateFormat.Hm().parse(dateTimeList[1].substring(0, 5));
   late var time = DateFormat.jm().format(_time);
+  late String location = widget.tripevent.location;
 
   Widget build(BuildContext context) {
     return InkWell(
@@ -183,6 +165,8 @@ class _eventInfoState extends State<eventInfo> {
           widget.onTap();
         },
         child: Container(
+            height: 300,
+            width: 250,
             margin: EdgeInsets.fromLTRB(0, 20, 0, 0),
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -192,73 +176,65 @@ class _eventInfoState extends State<eventInfo> {
             child: Row(children: <Widget>[
               Container(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Container(
-                                child: Text(
-                                  'Name: ${widget.tripevent.name}',
-                                  style: TextStyle(
-                                      //fontSize: 20,
-                                      //letterSpacing: .5,
-                                      ),
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Container(
-                                child: Text(
-                                  'Date: ${date}' + ' at ' + '${time}',
-                                  style: TextStyle(
-                                      //fontSize: 20,
-                                      //letterSpacing: .5,
-                                      ),
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Container(
-                                child: Text(
-                                  'Location: ${widget.tripevent.location}',
-                                  style: TextStyle(
-                                      //fontSize: 20,
-                                      //letterSpacing: .5,
-                                      ),
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Container(
-                                child: Text(
-                                  'Description: ${widget.tripevent.description}',
-                                  style: TextStyle(
-                                      //fontSize: 20,
-                                      //letterSpacing: .5,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Spacer(),
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black),
-                            borderRadius: BorderRadius.all(Radius.circular(15)),
-                          ),
-                          child: TextButton.icon(
-                              onPressed: () {
-                                _alertBuilder(
-                                    context, widget.trip, widget.tripevent);
-                                setState(() {});
-                              },
-                              icon: Icon(Icons.delete),
-                              label: Text('Delete')),
-                        ),
-                      ],
-                    )
+                    Container(
+                      child: Text(
+                        'Name: ${widget.tripevent.name}',
+                        style: TextStyle(
+                            //fontSize: 20,
+                            //letterSpacing: .5,
+                            ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Container(
+                      child: Text(
+                        'Date: ${date}' + ' at ' + '${time}',
+                        style: TextStyle(
+                            //fontSize: 20,
+                            //letterSpacing: .5,
+                            ),
+                      ),
+                    ),
+                    // SizedBox(height: 20),
+                    // Flexible(
+                    //   child: Text(
+                    //     'Location: $location',
+                    //     overflow: TextOverflow.clip,
+                    //     maxLines: 1,
+                    //     softWrap: false,
+                    //     style: TextStyle(
+                    //         //fontSize: 20,
+                    //         //letterSpacing: .5,
+                    //         ),
+                    //   ),
+                    // ),
+                    // SizedBox(height: 20),
+                    // Container(
+                    //   child: Text(
+                    //     'Description: ${widget.tripevent.description}',
+                    //     style: TextStyle(
+                    //         //fontSize: 20,
+                    //         //letterSpacing: .5,
+                    //         ),
+                    //   ),
+                    // ),
+                    SizedBox(height: 40),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black),
+                        borderRadius: BorderRadius.all(Radius.circular(15)),
+                      ),
+                      child: TextButton.icon(
+                          onPressed: () {
+                            _alertBuilder(
+                                context, widget.trip, widget.tripevent);
+                            setState(() {});
+                          },
+                          icon: Icon(Icons.delete),
+                          label: Text('Delete')),
+                    ),
                   ],
                 ),
               ),
@@ -266,7 +242,120 @@ class _eventInfoState extends State<eventInfo> {
   }
 }
 
-Future<void> sortList() async {
+class EventView extends StatefulWidget {
+  const EventView({
+    super.key,
+    required this.trip,
+    required this.tripevent,
+  });
+
+  final Trip trip;
+  final tripEvent tripevent;
+
+  @override
+  State<EventView> createState() => _EventViewState();
+}
+
+class _EventViewState extends State<EventView> {
+  late List dateTimeList = widget.tripevent.dateTime.split('T');
+
+  late var _date = DateFormat("yyyy-MM-dd").parse(dateTimeList[0]);
+
+  late var date = DateFormat("MM/dd/yyyy").format(_date);
+
+  late var _time = DateFormat.Hm().parse(dateTimeList[1].substring(0, 5));
+
+  late var time = DateFormat.jm().format(_time);
+
+  @override
+  Widget build(BuildContext context) {
+    //return InkWell(
+    //child:
+    return Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: Text(
+            '${widget.tripevent.name}',
+            style: TextStyle(
+              color: Colors.white,
+              letterSpacing: 2.0,
+            ),
+          ),
+        ),
+        body: Center(
+          child: Container(
+            height: 700,
+            width: 300,
+            margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.black),
+                borderRadius: BorderRadius.all(Radius.circular(15))),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  child: Text(
+                    'Name: ${widget.tripevent.name}',
+                    style: TextStyle(
+                      fontSize: 20,
+                      letterSpacing: .5,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  child: Text(
+                    'Date: ${date}' + ' at ' + '${time}',
+                    style: TextStyle(
+                        //fontSize: 20,
+                        //letterSpacing: .5,
+                        ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  child: Text(
+                    'Location: ${widget.tripevent.location}',
+                    style: TextStyle(
+                        //fontSize: 20,
+                        //letterSpacing: .5,
+                        ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  child: Text(
+                    'Description: ${widget.tripevent.description}',
+                    style: TextStyle(
+                        //fontSize: 20,
+                        //letterSpacing: .5,
+                        ),
+                  ),
+                ),
+                Spacer(),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black),
+                    borderRadius: BorderRadius.all(Radius.circular(15)),
+                  ),
+                  child: TextButton.icon(
+                      onPressed: () {
+                        _alertBuilder(context, widget.trip, widget.tripevent);
+                        setState(() {});
+                      },
+                      icon: Icon(Icons.delete),
+                      label: Text('Delete')),
+                ),
+              ],
+            ),
+          ),
+        ));
+  }
+}
+
+Future<void> sortedList() async {
   String currentDay = DateTime.now().toIso8601String();
   eventSortedDates.clear();
   eventPassedDates.clear();
@@ -319,7 +408,7 @@ Future<void> _alertBuilder(
                 trip.title.toString(),
                 tripevent.location.toString(),
               );
-              sortList();
+              sortedList();
               compareTimes(trip.title, trip.location);
               Navigator.push(
                   context,

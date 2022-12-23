@@ -54,7 +54,9 @@ class _HomeState extends State<Home> {
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) {
                     return const EventTrip();
-                  })).then(onBack);
+                  })).then((_) {
+                    sortList();
+                  });
                 },
                 icon: Icon(
                   Icons.add,
@@ -89,9 +91,7 @@ class _HomeState extends State<Home> {
                     MaterialPageRoute(
                         builder: (context) =>
                             Profile(trip: sortedDates[index])),
-                  ).then((_) {
-                    sortList();
-                  });
+                  );
                 },
               ));
         });
@@ -162,34 +162,6 @@ class Trip {
       required this.start_date,
       required this.end_date});
 }
-
-// Future<void> fetchRows() async {
-//   // dynamic count = fetchLength();
-//   // int length = count?.toInt() ?? 0;
-//   Database db = await UserDatabase.instance.database;
-//   int count = Sqflite.firstIntValue(
-//               await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
-//           ?.toInt() ??
-//       0;
-//   trips.clear();
-//   for (int i = 1; i <= count; i++) {
-//     Trip map = await get(i);
-//     trips.add(map);
-//   }
-// }
-
-// Future<Trip> get(int id) async {
-//   Database db = await UserDatabase.instance.database;
-//   final maps =
-//       //await db.query(UserDatabase.table2, where: 'id = ?', whereArgs: [id]);
-//       await db.rawQuery('SELECT * FROM eventPlanner WHERE id2=?', [id]);
-//   print(maps.toString());
-//   return Trip(
-//       title: maps[0]['tripName'].toString(),
-//       location: maps[0]['tripLocation'].toString(),
-//       start_date: maps[0]['startDate'].toString(),
-//       end_date: maps[0]['endDate'].toString());
-// }
 
 class TripRoute extends StatefulWidget {
   const TripRoute({
