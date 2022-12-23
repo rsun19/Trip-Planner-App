@@ -14,7 +14,6 @@ class tripEvent {
       required this.description,
       required this.dateTime,
       required this.location});
-
   final String name;
   final String description;
   final String dateTime;
@@ -47,7 +46,7 @@ Future<tripEvent> get(int id) async {
       location: maps[0][3].toString());
 }
 
-class Profile extends StatelessWidget {
+class Profile extends StatefulWidget {
   const Profile(
       {super.key,
       required this.trip,
@@ -56,11 +55,21 @@ class Profile extends StatelessWidget {
       this.dateTime,
       this.location});
   final Trip trip;
-
   final String? name;
   final String? description;
   final String? dateTime;
   final String? location;
+
+  @override
+  State<Profile> createState() => _ProfileState();
+}
+
+class _ProfileState extends State<Profile> {
+  @override
+  void initState() {
+    sortList();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +77,7 @@ class Profile extends StatelessWidget {
         appBar: AppBar(
           elevation: 0,
           title: Text(
-            '${trip.title}',
+            '${widget.trip.title}',
             style: TextStyle(
               color: Colors.white,
               letterSpacing: 2.0,
@@ -78,7 +87,7 @@ class Profile extends StatelessWidget {
             TextButton(
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return UserFormCase(trip: trip);
+                  return UserFormCase(trip: widget.trip);
                 }));
               },
               child: Text(
@@ -91,23 +100,56 @@ class Profile extends StatelessWidget {
             ),
           ],
         ),
-        body: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(20.0),
-          children: List.generate(
-            events.length,
-            (index) => eventInfo(
-              tripevent: events[index],
-              trip: trip,
-              onTap: () {
-                Navigator.push(
+        backgroundColor: Colors.blue,
+        body: Container(
+            child: new ListView.builder(
+                itemCount: eventSortedDates.length,
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                itemBuilder: (context, index) {
+                  return Center(
+                      key: new Key(index.toString()),
+                      child: eventInfo(
+                        tripevent: eventSortedDates[index],
+                        trip: widget.trip,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    UserFormCase(trip: widget.trip)),
+                          ).then((_) {
+                            sortList();
+                          });
+                        },
+                      ));
+                })));
+  }
+
+  Widget listView() {
+    //edit by sorting list first, then executing.
+    return new ListView.builder(
+        itemCount: eventSortedDates.length,
+        shrinkWrap: true,
+        // physics: ClampingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        itemBuilder: (context, index) {
+          return Center(
+              key: new Key(index.toString()),
+              child: eventInfo(
+                tripevent: eventSortedDates[index],
+                trip: widget.trip,
+                onTap: () {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => UserFormCase(trip: trip)));
-              },
-            ),
-          ),
-        ));
+                        builder: (context) => UserFormCase(trip: widget.trip)),
+                  ).then((_) {
+                    sortList();
+                  });
+                },
+              ));
+        });
   }
 }
 
@@ -162,39 +204,39 @@ class _eventInfoState extends State<eventInfo> {
                                 child: Text(
                                   'Name: ${widget.tripevent.name}',
                                   style: TextStyle(
-                                    fontSize: 20,
-                                    letterSpacing: .5,
-                                  ),
+                                      //fontSize: 20,
+                                      //letterSpacing: .5,
+                                      ),
                                 ),
                               ),
-                              SizedBox(height: 10),
+                              SizedBox(height: 5),
                               Container(
                                 child: Text(
                                   'Date: ${date}' + ' at ' + '${time}',
                                   style: TextStyle(
-                                    fontSize: 20,
-                                    letterSpacing: .5,
-                                  ),
+                                      //fontSize: 20,
+                                      //letterSpacing: .5,
+                                      ),
                                 ),
                               ),
-                              SizedBox(height: 10),
+                              SizedBox(height: 5),
                               Container(
                                 child: Text(
                                   'Location: ${widget.tripevent.location}',
                                   style: TextStyle(
-                                    fontSize: 20,
-                                    letterSpacing: .5,
-                                  ),
+                                      //fontSize: 20,
+                                      //letterSpacing: .5,
+                                      ),
                                 ),
                               ),
-                              SizedBox(height: 10),
+                              SizedBox(height: 5),
                               Container(
                                 child: Text(
                                   'Description: ${widget.tripevent.description}',
                                   style: TextStyle(
-                                    fontSize: 20,
-                                    letterSpacing: .5,
-                                  ),
+                                      //fontSize: 20,
+                                      //letterSpacing: .5,
+                                      ),
                                 ),
                               ),
                             ],
@@ -224,11 +266,42 @@ class _eventInfoState extends State<eventInfo> {
   }
 }
 
-void sortList() {
-  events.sort((a, b) {
+Future<void> sortList() async {
+  String currentDay = DateTime.now().toIso8601String();
+  eventSortedDates.clear();
+  eventPassedDates.clear();
+  //getTimeRanges();
+  Database db = await UserDatabase.instance.database;
+  int count =
+      Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM users'))
+              ?.toInt() ??
+          0;
+  for (int i = 1; i <= count; i++) {
+    final maps =
+        await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
+    eventSortedDates.add(tripEvent(
+        name: maps[0]['name'].toString(),
+        description: maps[0]['description'].toString(),
+        dateTime: maps[0]['dateTime'].toString(),
+        location: maps[0]['location'].toString()));
+  }
+  print(eventSortedDates);
+  eventSortedDates.sort((a, b) {
     return a.dateTime.compareTo(b.dateTime);
   });
+  for (var each in eventSortedDates) {
+    if (each.dateTime.compareTo(currentDay) < 1) {
+      eventPassedDates.add(each);
+    }
+  }
+  eventSortedDates.removeWhere((e) => eventPassedDates.contains(e));
+  for (var each in eventPassedDates) {
+    eventSortedDates.add(each);
+  }
 }
+
+List<tripEvent> eventSortedDates = [];
+List<tripEvent> eventPassedDates = [];
 
 Future<void> _alertBuilder(
     BuildContext context, Trip trip, tripEvent tripevent) async {

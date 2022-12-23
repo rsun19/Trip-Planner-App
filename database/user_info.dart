@@ -53,17 +53,16 @@ class TripInfo {
   late int id;
   late String tripName;
   late String tripLocation;
-  late String tripHotel;
   late String startDate;
   late String endDate;
 
-  TripInfo(this.id, this.tripName, this.tripLocation, this.tripHotel);
+  TripInfo(
+      this.id, this.tripName, this.tripLocation, this.startDate, this.endDate);
 
   TripInfo.fromMap(Map<String, dynamic> map) {
     id = map['id'];
     tripName = map['tripName'];
     tripLocation = map['tripLocation'];
-    tripHotel = map['tripHotel'];
     startDate = map['startDate'];
     endDate = map['endDate'];
   }
@@ -73,9 +72,8 @@ class TripInfo {
       UserDatabase.columnId: id,
       UserDatabase.columnTripName: tripName,
       UserDatabase.columnTripLocation: tripLocation,
-      UserDatabase.columnTripHotel: tripHotel,
       UserDatabase.columnTripStartDate: startDate,
-      UserDatabase.columnTripEndDate: endDate
+      UserDatabase.columnTripEndDate: endDate,
     };
   }
 }
@@ -93,7 +91,6 @@ class UserDatabase {
   static final columnLocation = 'location';
   static final columnTripName = 'tripName';
   static final columnTripLocation = 'tripLocation';
-  static final columnTripHotel = 'tripHotel';
   static final columnTripNameEvent = 'tripNameEvent';
   static final columnTripLocationEvent = 'tripLocationEvent';
   static final columnTripStartDate = 'tripStartDate';
@@ -129,7 +126,6 @@ class UserDatabase {
           $columnId2 INTEGER PRIMARY KEY,
           $columnTripName TEXT,
           $columnTripLocation TEXT,
-          $columnTripHotel TEXT,
           $columnTripStartDate TEXT,
           $columnTripEndDate TEXT,
           createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

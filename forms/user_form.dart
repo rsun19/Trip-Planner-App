@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/main.dart';
+import 'package:trip_reminder/profile/user_profile.dart';
 
 class UserFormCase extends StatelessWidget {
   const UserFormCase({
@@ -190,6 +191,11 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                   _insert(name, description, ISO8601, location, tripName,
                       tripLocation);
                   compareTimes(widget.trip.title, widget.trip.location);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Profile(trip: widget.trip),
+                      ));
                 }
               },
               child: const Text('Submit'))
@@ -234,6 +240,11 @@ Future compareTimes(tripName, tripLocation) async {
   String timeListforTrip = getTime(tripName, tripLocation).toString();
   List startEndList = timeListforTrip.split(',');
   if (startEndList[0] != '0000-00-00T00:00:00.000') {
+    if (times.length != 0) {
+      update(tripName, tripLocation, times[0]);
+      _update(tripName, tripLocation, times[times.length - 1]);
+    } else {}
+  } else {
     update(tripName, tripLocation, times[0]);
     _update(tripName, tripLocation, times[times.length - 1]);
   }
@@ -243,19 +254,19 @@ List<String> times = [];
 
 Future<String> getTime(String TripName, String TripLocation) async {
   Database db = await UserDatabase.instance.database;
-  int count = Sqflite.firstIntValue(
-              await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
-          ?.toInt() ??
-      0;
+  int count =
+      Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM users'))
+              ?.toInt() ??
+          0;
   times.clear();
   for (int i = 1; i <= count; i++) {
     final datetimes =
         await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
-    times.add(datetimes[0][3].toString());
+    times.add(datetimes[0]['dateTime'].toString());
   }
   times.sort();
   final maps = await db.query(UserDatabase.table2,
-      where: 'tripNameEvent=?, tripLocationEvent=?',
+      where: 'tripName=? AND tripLocation=?',
       whereArgs: [TripName, TripLocation]);
-  return maps[0][4].toString() + ',' + maps[0][5].toString();
+  return maps[0]['startDate'].toString() + ',' + maps[0]['endDate'].toString();
 }

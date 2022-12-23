@@ -5,6 +5,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
+import 'package:trip_reminder/forms/user_form.dart';
 import 'profile/user_profile.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -13,7 +14,7 @@ void main() {
   runApp(const MaterialApp(home: Home()));
 }
 
-List<Trip> trips = [];
+//List<Trip> trips = [];
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -24,7 +25,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   @override
   void initState() {
-    fetchRows();
+    sortList();
     super.initState();
   }
 
@@ -68,29 +69,85 @@ class _HomeState extends State<Home> {
               ),
             ]),
         backgroundColor: Colors.blue,
-        // ignore: unnecessary_new
-        body: Container(
-            child: new ListView.builder(
-                itemCount: trips.length,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                itemBuilder: (context, index) {
-                  //List.generate(trips.length, ((index) {
-                  return Center(
-                      key: new Key(index.toString()),
-                      child: TripRoute(
-                        trip: trips[index],
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    Profile(trip: trips[index])),
-                          ).then((_) {
-                            setState(() {});
-                          });
-                        },
-                      ));
-                }))); //));
+        body: Container(child: listView()));
+  }
+
+  Widget listView() {
+    //edit by sorting list first, then executing.
+    return new ListView.builder(
+        itemCount: sortedDates.length,
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        itemBuilder: (context, index) {
+          return Center(
+              key: new Key(index.toString()),
+              child: TripRoute(
+                trip: sortedDates[index],
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            Profile(trip: sortedDates[index])),
+                  ).then((_) {
+                    sortList();
+                  });
+                },
+              ));
+        });
+  }
+}
+
+List<Trip> sortedDates = [];
+List<Trip> passedDates = [];
+
+Future<void> sortList() async {
+  String currentDay = DateTime.now().toIso8601String();
+  sortedDates.clear();
+  passedDates.clear();
+  //getTimeRanges();
+  Database db = await UserDatabase.instance.database;
+  int count = Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
+          ?.toInt() ??
+      0;
+  for (int i = 1; i <= count; i++) {
+    final maps =
+        await db.query(UserDatabase.table2, where: 'id2=?', whereArgs: [i]);
+    sortedDates.add(Trip(
+        title: maps[0]['tripName'].toString(),
+        location: maps[0]['tripLocation'].toString(),
+        start_date: maps[0]['tripStartDate'].toString(),
+        end_date: maps[0]['tripEndDate'].toString()));
+  }
+  sortedDates.sort((a, b) {
+    return a.start_date.compareTo(b.start_date);
+  });
+  for (var each in sortedDates) {
+    if (each.end_date.compareTo(currentDay) < 1) {
+      passedDates.add(each);
+    }
+  }
+  sortedDates.removeWhere((e) => passedDates.contains(e));
+  for (var each in passedDates) {
+    sortedDates.add(each);
+  }
+}
+
+Future<void> getTimeRanges() async {
+  Database db = await UserDatabase.instance.database;
+  int count = Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
+          ?.toInt() ??
+      0;
+  for (int i = 1; i <= count; i++) {
+    final maps =
+        await db.query(UserDatabase.table2, where: 'id2=?', whereArgs: [i]);
+    sortedDates.add(Trip(
+        title: maps[0]['tripName'].toString(),
+        location: maps[0]['tripLocation'].toString(),
+        start_date: maps[0]['tripStartDate'].toString(),
+        end_date: maps[0]['tripEndDate'].toString()));
   }
 }
 
@@ -106,46 +163,33 @@ class Trip {
       required this.end_date});
 }
 
-// void _insert(name, description, date, time, location) async {
+// Future<void> fetchRows() async {
+//   // dynamic count = fetchLength();
+//   // int length = count?.toInt() ?? 0;
 //   Database db = await UserDatabase.instance.database;
-
-//   Map<String, dynamic> row = {
-//     UserDatabase.columnName: name,
-//     UserDatabase.columnDescription: description,
-//     UserDatabase.columnTripStartDate: date,
-//     UserDatabase.columnTime: time,
-//     UserDatabase.columnLocation: location
-//   };
-//   int id = await db.insert(UserDatabase.table, row);
+//   int count = Sqflite.firstIntValue(
+//               await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
+//           ?.toInt() ??
+//       0;
+//   trips.clear();
+//   for (int i = 1; i <= count; i++) {
+//     Trip map = await get(i);
+//     trips.add(map);
+//   }
 // }
 
-Future<void> fetchRows() async {
-  // dynamic count = fetchLength();
-  // int length = count?.toInt() ?? 0;
-  Database db = await UserDatabase.instance.database;
-  int count = Sqflite.firstIntValue(
-              await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
-          ?.toInt() ??
-      0;
-  trips.clear();
-  for (int i = 1; i <= count; i++) {
-    Trip map = await get(i);
-    trips.add(map);
-  }
-}
-
-Future<Trip> get(int id) async {
-  Database db = await UserDatabase.instance.database;
-  final maps =
-      //await db.query(UserDatabase.table2, where: 'id = ?', whereArgs: [id]);
-      await db.rawQuery('SELECT * FROM eventPlanner WHERE id2=?', [id]);
-  print(maps.toString());
-  return Trip(
-      title: maps[0]['tripName'].toString(),
-      location: maps[0]['tripLocation'].toString(),
-      start_date: maps[0]['startDate'].toString(),
-      end_date: maps[0]['endDate'].toString());
-}
+// Future<Trip> get(int id) async {
+//   Database db = await UserDatabase.instance.database;
+//   final maps =
+//       //await db.query(UserDatabase.table2, where: 'id = ?', whereArgs: [id]);
+//       await db.rawQuery('SELECT * FROM eventPlanner WHERE id2=?', [id]);
+//   print(maps.toString());
+//   return Trip(
+//       title: maps[0]['tripName'].toString(),
+//       location: maps[0]['tripLocation'].toString(),
+//       start_date: maps[0]['startDate'].toString(),
+//       end_date: maps[0]['endDate'].toString());
+// }
 
 class TripRoute extends StatefulWidget {
   const TripRoute({
@@ -217,8 +261,6 @@ class _TripRouteState extends State<TripRoute> {
     }
     return Text('Add an event!');
   }
-
-  Widget listView() {}
 }
 
 Future delete(String tripName, String tripLocation) async {
@@ -229,8 +271,8 @@ Future delete(String tripName, String tripLocation) async {
 }
 
 Future deleteFromList(Trip trip) async {
-  if (trips.contains(trip)) {
-    trips.remove(trip);
+  if (sortedDates.contains(trip)) {
+    sortedDates.remove(trip);
   }
 }
 

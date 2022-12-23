@@ -57,7 +57,6 @@ class EventTripInfo extends StatefulWidget {
 
 class _EventTripInfoState extends State<EventTripInfo> {
   final TextEditingController _controller = TextEditingController();
-  final TextEditingController _hotelInput = TextEditingController();
   final TextEditingController _locationinput = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   @override
@@ -101,25 +100,12 @@ class _EventTripInfoState extends State<EventTripInfo> {
                 }),
           ),
           SizedBox(height: 5),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-            child: TextFormField(
-              controller: _hotelInput,
-              decoration: const InputDecoration(
-                border: UnderlineInputBorder(),
-                labelText:
-                    "What are your hotel coordinates (optional)? Please enter in (x,y) format.",
-              ),
-            ),
-          ),
-          SizedBox(height: 5),
           ElevatedButton(
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   final String tripName = _controller.text;
                   final String tripLocation = _locationinput.text;
-                  final String tripHotel = _hotelInput.text;
-                  _insert(tripName, tripLocation, tripHotel);
+                  _insert(tripName, tripLocation);
                   Navigator.pop(context);
                 }
               },
@@ -129,15 +115,15 @@ class _EventTripInfoState extends State<EventTripInfo> {
     );
   }
 
-  void _insert(tripName, tripLocation, tripHotel) async {
+  void _insert(tripName, tripLocation) async {
     Database db = await UserDatabase.instance.database;
-
+    String startDate = '0000-00-00T00:00:00.000';
+    String endDate = '0000-00-00T00:00:00.000';
     Map<String, dynamic> row = {
       UserDatabase.columnTripName: tripName,
       UserDatabase.columnTripLocation: tripLocation,
-      UserDatabase.columnTripHotel: tripHotel,
-      UserDatabase.columnTripStartDate: '0000-00-00T00:00:00.000',
-      UserDatabase.columnTripEndDate: '0000-00-00T00:00:00.000'
+      UserDatabase.columnTripStartDate: startDate,
+      UserDatabase.columnTripEndDate: endDate,
     };
     int id = await db.insert(UserDatabase.table2, row);
     print(await db.query(UserDatabase.table2));
