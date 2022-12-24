@@ -1,12 +1,10 @@
-// ignore_for_file: unused_element
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
-import 'package:trip_reminder/forms/user_form.dart';
+import 'package:trip_reminder/forms/event_form.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
 
 class UserInfo {
@@ -21,16 +19,6 @@ class UserInfo {
   UserInfo(this.id, this.name, this.description, this.dateTime, this.location,
       this.tripName, this.tripLocation);
 
-  UserInfo.fromMap(Map<String, dynamic> map) {
-    id = map['id'];
-    name = map['name'];
-    description = map['description'];
-    dateTime = map['dateTime'];
-    location = map['location'];
-    tripName = map['tripName'];
-    tripLocation = map['tripLocation'];
-  }
-
   Map<String, dynamic> toMap() {
     return {
       UserDatabase.columnId: id,
@@ -42,11 +30,6 @@ class UserInfo {
       UserDatabase.columnTripLocationEvent: tripLocation,
     };
   }
-
-  // @override
-  // String toString() {
-  //   return 'UserInfo{id: $id, user: $user, age: $age, gender: $gender, goalGulps: $goalGulps, goalLiters: $goalLiters, litgal: $litgal}';
-  //}
 }
 
 class TripInfo {
@@ -58,14 +41,6 @@ class TripInfo {
 
   TripInfo(
       this.id, this.tripName, this.tripLocation, this.startDate, this.endDate);
-
-  TripInfo.fromMap(Map<String, dynamic> map) {
-    id = map['id'];
-    tripName = map['tripName'];
-    tripLocation = map['tripLocation'];
-    startDate = map['startDate'];
-    endDate = map['endDate'];
-  }
 
   Map<String, dynamic> toMap() {
     return {

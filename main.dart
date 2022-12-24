@@ -1,20 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
-import 'package:trip_reminder/forms/user_form.dart';
-import 'profile/user_profile.dart';
+import 'package:trip_reminder/forms/event_form.dart';
+import 'profile/event_listings.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 void main() {
   runApp(const MaterialApp(home: Home()));
 }
-
-//List<Trip> trips = [];
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -23,21 +22,6 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  @override
-  void initState() {
-    sortList();
-    super.initState();
-  }
-
-  void refreshPage() {
-    //iterable++;
-  }
-
-  FutureOr onBack(dynamic value) {
-    refreshPage();
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +37,7 @@ class _HomeState extends State<Home> {
               TextButton.icon(
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) {
-                    return const EventTrip();
+                    return const EventTripInfo();
                   })).then((_) {
                     sortList();
                   });
@@ -71,41 +55,47 @@ class _HomeState extends State<Home> {
               ),
             ]),
         backgroundColor: Colors.blue,
-        body: Container(child: listView()));
-  }
-
-  Widget listView() {
-    //edit by sorting list first, then executing.
-    return new ListView.builder(
-        itemCount: sortedDates.length,
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-        itemBuilder: (context, index) {
-          return Center(
-              key: new Key(index.toString()),
-              child: TripRoute(
-                trip: sortedDates[index],
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            Profile(trip: sortedDates[index])),
-                  );
-                },
-              ));
-        });
+        body: FutureBuilder<List<Trip>>(
+          future: sortList(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData &&
+                snapshot.connectionState == ConnectionState.done) {
+              return ListView.builder(
+                  itemCount: snapshot.data!.length,
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  itemBuilder: (context, index) {
+                    return Center(
+                        key: new Key(index.toString()),
+                        child: TripRoute(
+                          trip: snapshot.data![index],
+                          onTap: () {
+                            compareTimes(snapshot.data![index].title,
+                                snapshot.data![index].location);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      Profile(trip: snapshot.data![index])),
+                            );
+                          },
+                        ));
+                  });
+            } else {
+              return CircularProgressIndicator();
+            }
+          },
+        ));
   }
 }
 
 List<Trip> sortedDates = [];
 List<Trip> passedDates = [];
 
-Future<void> sortList() async {
+Future<List<Trip>> sortList() async {
   String currentDay = DateTime.now().toIso8601String();
   sortedDates.clear();
   passedDates.clear();
-  //getTimeRanges();
   Database db = await UserDatabase.instance.database;
   int count = Sqflite.firstIntValue(
               await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
@@ -132,23 +122,11 @@ Future<void> sortList() async {
   for (var each in passedDates) {
     sortedDates.add(each);
   }
-}
-
-Future<void> getTimeRanges() async {
-  Database db = await UserDatabase.instance.database;
-  int count = Sqflite.firstIntValue(
-              await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
-          ?.toInt() ??
-      0;
-  for (int i = 1; i <= count; i++) {
-    final maps =
-        await db.query(UserDatabase.table2, where: 'id2=?', whereArgs: [i]);
-    sortedDates.add(Trip(
-        title: maps[0]['tripName'].toString(),
-        location: maps[0]['tripLocation'].toString(),
-        start_date: maps[0]['tripStartDate'].toString(),
-        end_date: maps[0]['tripEndDate'].toString()));
+  List<Trip> sentDates = [];
+  for (var each in sortedDates) {
+    sentDates.add(each);
   }
+  return sentDates;
 }
 
 class Trip {
@@ -203,6 +181,7 @@ class _TripRouteState extends State<TripRoute> {
                     Container(
                       child: Text('Location: ${widget.trip.location}'),
                     ),
+                    SizedBox(height: 20),
                     Container(child: dateChecker()),
                   ],
                 )),
@@ -225,11 +204,16 @@ class _TripRouteState extends State<TripRoute> {
   }
 
   Widget dateChecker() {
-    /// check this
     if (widget.trip.start_date != '0000-00-00T00:00:00.000') {
-      final String start_date = widget.trip.start_date.split('T')[0];
-      final String end_date = widget.trip.end_date.split('T')[0];
-      return Text('${start_date} + " - " + ${end_date}');
+      late var _start_date =
+          DateFormat("yyyy-MM-dd").parse(widget.trip.start_date.split('T')[0]);
+      late String start_date =
+          DateFormat("MM/dd/yyyy").format(_start_date).toString();
+      late var _end_date =
+          DateFormat("yyyy-MM-dd").parse(widget.trip.end_date.split('T')[0]);
+      late String end_date =
+          DateFormat("MM/dd/yyyy").format(_end_date).toString();
+      return Text('Dates: ${start_date} - ${end_date}');
     }
     return Text('Add an event!');
   }
@@ -239,6 +223,9 @@ Future delete(String tripName, String tripLocation) async {
   Database db = await UserDatabase.instance.database;
   final maps = await db.rawDelete(
       'DELETE FROM eventPlanner WHERE tripName = ? AND tripLocation = ?',
+      [tripName, tripLocation]);
+  await db.rawDelete(
+      'DELETE FROM users WHERE tripNameEvent = ? AND tripLocationEvent = ?',
       [tripName, tripLocation]);
 }
 
