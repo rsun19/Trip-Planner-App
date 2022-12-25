@@ -1,0 +1,61 @@
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:latlong2/latlong.dart';
+import 'package:trip_reminder/main.dart';
+
+class ORSCaller {
+  ORSCaller({
+    required this.latStart,
+    required this.longStart,
+    required this.latEnd,
+    required this.longEnd,
+    required this.tripRoute,
+  });
+
+  final String url = 'https://api.openrouteservice.org/v2/directions/';
+  final String apiKey =
+      'INSERT_API_KEY_HERE';
+  final String tripRoute;
+  final double latStart;
+  final double longStart;
+  final double latEnd;
+  final double longEnd;
+
+  Future getData() async {
+    http.Response response = await http.get(Uri.parse(
+        '$url$tripRoute?api_key=$apiKey&start=$longStart,$latStart&end=$longEnd,$latEnd'));
+    print(
+        '$url$tripRoute?api_key=$apiKey&start=$longStart,$latStart&end=$longEnd,$latEnd');
+    if (response.statusCode == 200) {
+      String data = response.body;
+      return jsonDecode(data);
+    } else {
+      print(response.statusCode);
+    }
+  }
+}
+
+Future getJsonData(ORSCaller orsCaller) async {
+  ORSCaller directionsInfo = ORSCaller(
+      latStart: orsCaller.latStart,
+      longStart: orsCaller.longStart,
+      latEnd: orsCaller.latEnd,
+      longEnd: orsCaller.longEnd,
+      tripRoute: orsCaller.tripRoute);
+  try {
+    var data = await directionsInfo.getData();
+    print(data);
+    Directions line =
+        Directions(data['features'][0]['geometry']['coordinates']);
+    for (int i = 0; i < line.directions.length; i++) {
+      points.add(LatLng(line.directions[i][1], line.directions[i][0]));
+    }
+  } catch (e) {
+    print(e);
+  }
+}
+
+class Directions {
+  Directions(this.directions);
+  List<dynamic> directions;
+}
