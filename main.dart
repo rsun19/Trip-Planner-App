@@ -11,11 +11,13 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-//import 'package:location/location.dart';
+import 'package:trip_reminder/api-ORS/openRouteService.dart';
 
 void main() {
   runApp(MaterialApp(home: Home()));
 }
+
+enum RouteTaken { driving, walking, biking }
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -25,6 +27,7 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   late Position _currentPosition;
+  RouteTaken? _routeTaken = RouteTaken.driving;
   final TextEditingController _controller = TextEditingController();
   @override
   void initState() {
@@ -143,29 +146,74 @@ class _HomeState extends State<Home> {
                             }),
                       ),
                       SizedBox(height: 5),
+                      Padding(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                          child: ListTile(
+                              title: const Text('Driving'),
+                              leading: Radio<RouteTaken>(
+                                value: RouteTaken.driving,
+                                groupValue: _routeTaken,
+                                activeColor: Colors.white,
+                                onChanged: (RouteTaken? value) {
+                                  setState(() {
+                                    _routeTaken = value;
+                                  });
+                                },
+                              ))),
+                      Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                          ),
+                          child: ListTile(
+                              title: const Text('Walking'),
+                              leading: Radio<RouteTaken>(
+                                value: RouteTaken.walking,
+                                groupValue: _routeTaken,
+                                activeColor: Colors.white,
+                                onChanged: (RouteTaken? value) {
+                                  setState(() {
+                                    _routeTaken = value;
+                                  });
+                                },
+                              ))),
+                      Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                          ),
+                          child: ListTile(
+                              title: const Text('Biking'),
+                              leading: Radio<RouteTaken>(
+                                value: RouteTaken.biking,
+                                groupValue: _routeTaken,
+                                activeColor: Colors.white,
+                                onChanged: (RouteTaken? value) {
+                                  setState(() {
+                                    _routeTaken = value;
+                                  });
+                                },
+                              ))),
                       ElevatedButton(
                           child: const Text('Submit'),
                           onPressed: () async {
                             if (_formKey.currentState!.validate()) {
                               final String tripName = _controller.text;
                               final String tripLocation = _locationinput.text;
-                              // FutureBuilder<List<double>>(
-                              //     future: coordinates(tripName, tripLocation),
-                              //     builder: (context, snapshot) {
-                              //       if (snapshot.hasData &&
-                              //           snapshot.connectionState ==
-                              //               ConnectionState.done) {
-                              //         print('returning!');
-                              //         return Expanded(child: flutter_osm_map());
-                              //       } else {
-                              //         return SizedBox(
-                              //           width: 60,
-                              //           height: 60,
-                              //           child: CircularProgressIndicator(),
-                              //         );
-                              //       }
-                              //     });
+                              String route = '';
+                              if (_routeTaken == RouteTaken.driving) {
+                                route = 'driving-car';
+                              } else if (_routeTaken == RouteTaken.walking) {
+                                route = 'foot-walking';
+                              } else {
+                                route = 'cycling-road';
+                              }
                               await coordinates(tripName, tripLocation);
+                              await getJsonData(ORSCaller(
+                                  latStart: locationCoordinates[0],
+                                  longStart: locationCoordinates[1],
+                                  latEnd: locationCoordinates[2],
+                                  longEnd: locationCoordinates[3],
+                                  tripRoute: route));
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -184,6 +232,8 @@ class _HomeState extends State<Home> {
         ));
   }
 }
+
+List<LatLng> points = [];
 
 class HomeMap extends StatefulWidget {
   const HomeMap({super.key});
@@ -223,13 +273,26 @@ Widget flutter_osm_map() {
         urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         userAgentPackageName: 'com.trip_reminder.app',
       ),
+      MarkerLayer(
+        markers: [
+          Marker(
+            point: LatLng(locationCoordinates[0], locationCoordinates[1]),
+            width: 80,
+            height: 80,
+            builder: (context) => Icon(Icons.circle),
+          ),
+          Marker(
+            point: LatLng(locationCoordinates[2], locationCoordinates[3]),
+            width: 80,
+            height: 80,
+            builder: (context) => Icon(Icons.navigation),
+          ),
+        ],
+      ),
       PolylineLayer(
         polylineCulling: false,
         polylines: [
-          Polyline(points: [
-            LatLng(locationCoordinates[0], locationCoordinates[1]),
-            LatLng(locationCoordinates[2], locationCoordinates[3]),
-          ], color: Colors.blue)
+          Polyline(strokeWidth: 5, points: points, color: Colors.blue)
         ],
       ),
     ],
@@ -238,7 +301,7 @@ Widget flutter_osm_map() {
 
 List<double> locationCoordinates = [];
 
-Future<List<double>> coordinates(tripName, tripLocation) async {
+Future<void> coordinates(tripName, tripLocation) async {
   locationCoordinates.clear();
   if (tripName.replaceAll(' ', '').toLowerCase() != 'currentlocation') {
     List<Location> locations = await locationFromAddress(tripName);
@@ -259,12 +322,9 @@ Future<List<double>> coordinates(tripName, tripLocation) async {
   List<Location> _locations = await locationFromAddress(tripLocation);
   locationCoordinates.add(_locations[0].latitude);
   locationCoordinates.add(_locations[0].longitude);
-  List<double> coordinatesOutput = [];
-  for (var each in locationCoordinates) {
-    coordinatesOutput.add(each);
-  }
-  print(coordinatesOutput);
-  return coordinatesOutput;
+  points.clear();
+  // points.add(LatLng(locationCoordinates[0], locationCoordinates[1]));
+  // points.add(LatLng(locationCoordinates[2], locationCoordinates[3]));
 }
 
 Widget menu() {
