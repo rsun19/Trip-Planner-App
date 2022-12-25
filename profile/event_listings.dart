@@ -3,9 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_form.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:trip_reminder/database/user_info.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import 'package:trip_reminder/main.dart';
 
 class tripEvent {
@@ -94,7 +91,7 @@ class _ProfileState extends State<Profile> {
             ),
           ],
         ),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.lightBlue,
         body: SizedBox(
             height: 1000,
             width: 1000,

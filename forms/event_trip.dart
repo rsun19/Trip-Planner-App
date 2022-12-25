@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:intl/intl.dart';
-import 'dart:io';
-import 'dart:async';
-import 'package:intl/date_symbol_data_local.dart';
-import 'package:trip_reminder/main.dart';
 
 class EventTripInfo extends StatefulWidget {
   const EventTripInfo({super.key});

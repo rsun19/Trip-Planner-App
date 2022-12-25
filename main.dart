@@ -1,18 +1,20 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
 import 'package:trip_reminder/forms/event_form.dart';
 import 'profile/event_listings.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+//import 'package:location/location.dart';
 
 void main() {
-  runApp(const MaterialApp(home: Home()));
+  runApp(MaterialApp(home: Home()));
 }
 
 class Home extends StatefulWidget {
@@ -22,71 +24,261 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  late Position _currentPosition;
+  final TextEditingController _controller = TextEditingController();
+  @override
+  void initState() {
+    _controller.text = "current location";
+    super.initState();
+  }
+
+  final TextEditingController _locationinput = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+              backgroundColor: Colors.lightBlue,
+              elevation: 0,
+              title: Text('Trip Planner',
+                  style: TextStyle(
+                    color: Colors.white,
+                    letterSpacing: 2.0,
+                  )),
+              actions: <Widget>[
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) {
+                      return const EventTripInfo();
+                    })).then((_) {
+                      sortList();
+                    });
+                  },
+                  icon: Icon(
+                    Icons.add,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    'Add a Trip',
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ]),
+          backgroundColor: Colors.blue,
+          bottomNavigationBar: menu(),
+          body: TabBarView(children: [
+            FutureBuilder<List<Trip>>(
+              future: sortList(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData &&
+                    snapshot.connectionState == ConnectionState.done) {
+                  return ListView.builder(
+                      itemCount: snapshot.data!.length,
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                      itemBuilder: (context, index) {
+                        return Center(
+                            key: new Key(index.toString()),
+                            child: TripRoute(
+                              trip: snapshot.data![index],
+                              onTap: () {
+                                compareTimes(snapshot.data![index].title,
+                                    snapshot.data![index].location);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          Profile(trip: snapshot.data![index])),
+                                );
+                              },
+                            ));
+                      });
+                } else {
+                  return CircularProgressIndicator();
+                }
+              },
+            ),
+            Column(children: [
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    scrollDirection: Axis.vertical,
+                    shrinkWrap: true,
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                    children: <Widget>[
+                      Container(
+                        child: TextFormField(
+                            controller: _controller,
+                            decoration: const InputDecoration(
+                              border: UnderlineInputBorder(),
+                              labelText: "Where are you coming from?",
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter some text';
+                              }
+                              return null;
+                            }),
+                      ),
+                      SizedBox(height: 5),
+                      Container(
+                        child: TextFormField(
+                            controller: _locationinput,
+                            decoration: const InputDecoration(
+                              border: UnderlineInputBorder(),
+                              labelText:
+                                  "Where are you going? Enter as much information as possible.",
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter some text';
+                              }
+                              return null;
+                            }),
+                      ),
+                      SizedBox(height: 5),
+                      ElevatedButton(
+                          child: const Text('Submit'),
+                          onPressed: () async {
+                            if (_formKey.currentState!.validate()) {
+                              final String tripName = _controller.text;
+                              final String tripLocation = _locationinput.text;
+                              // FutureBuilder<List<double>>(
+                              //     future: coordinates(tripName, tripLocation),
+                              //     builder: (context, snapshot) {
+                              //       if (snapshot.hasData &&
+                              //           snapshot.connectionState ==
+                              //               ConnectionState.done) {
+                              //         print('returning!');
+                              //         return Expanded(child: flutter_osm_map());
+                              //       } else {
+                              //         return SizedBox(
+                              //           width: 60,
+                              //           height: 60,
+                              //           child: CircularProgressIndicator(),
+                              //         );
+                              //       }
+                              //     });
+                              await coordinates(tripName, tripLocation);
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => HomeMap(),
+                                  ));
+                            }
+                          })
+                    ],
+                  ),
+                ),
+                //flutter_map()
+              ),
+              //Expanded(child: flutter_osm_map()),
+            ]),
+          ]),
+        ));
+  }
+}
+
+class HomeMap extends StatefulWidget {
+  const HomeMap({super.key});
+
+  @override
+  State<HomeMap> createState() => _HomeMapState();
+}
+
+class _HomeMapState extends State<HomeMap> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-            backgroundColor: Colors.lightBlue,
-            elevation: 0,
-            title: Text('Trip Planner',
-                style: TextStyle(
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                )),
-            actions: <Widget>[
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) {
-                    return const EventTripInfo();
-                  })).then((_) {
-                    sortList();
-                  });
-                },
-                icon: Icon(
-                  Icons.add,
-                  color: Colors.white,
-                ),
-                label: Text(
-                  'Add a Trip',
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ]),
-        backgroundColor: Colors.blue,
-        body: FutureBuilder<List<Trip>>(
-          future: sortList(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData &&
-                snapshot.connectionState == ConnectionState.done) {
-              return ListView.builder(
-                  itemCount: snapshot.data!.length,
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                  itemBuilder: (context, index) {
-                    return Center(
-                        key: new Key(index.toString()),
-                        child: TripRoute(
-                          trip: snapshot.data![index],
-                          onTap: () {
-                            compareTimes(snapshot.data![index].title,
-                                snapshot.data![index].location);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      Profile(trip: snapshot.data![index])),
-                            );
-                          },
-                        ));
-                  });
-            } else {
-              return CircularProgressIndicator();
-            }
-          },
-        ));
+      appBar: AppBar(
+          backgroundColor: Colors.lightBlue,
+          elevation: 0,
+          title: Text('Map',
+              style: TextStyle(
+                color: Colors.white,
+                letterSpacing: 2.0,
+              ))),
+      body: flutter_osm_map(),
+    );
   }
+}
+
+Widget flutter_osm_map() {
+  return FlutterMap(
+    //mapController: mapController,
+    options: MapOptions(
+      center: LatLng(locationCoordinates[0], locationCoordinates[1]),
+      zoom: 13.0,
+      maxZoom: 19.0,
+      keepAlive: true,
+    ),
+    children: [
+      TileLayer(
+        urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        userAgentPackageName: 'com.trip_reminder.app',
+      ),
+      PolylineLayer(
+        polylineCulling: false,
+        polylines: [
+          Polyline(points: [
+            LatLng(locationCoordinates[0], locationCoordinates[1]),
+            LatLng(locationCoordinates[2], locationCoordinates[3]),
+          ], color: Colors.blue)
+        ],
+      ),
+    ],
+  );
+}
+
+List<double> locationCoordinates = [];
+
+Future<List<double>> coordinates(tripName, tripLocation) async {
+  locationCoordinates.clear();
+  if (tripName.replaceAll(' ', '').toLowerCase() != 'currentlocation') {
+    List<Location> locations = await locationFromAddress(tripName);
+    locationCoordinates.add(locations[0].latitude);
+    locationCoordinates.add(locations[0].longitude);
+  } else {
+    Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            forceAndroidLocationManager: true)
+        .then((Position position) {
+      locationCoordinates.add(position.latitude.toDouble());
+      locationCoordinates.add(position.longitude.toDouble());
+    }).catchError((e) {
+      print(e);
+      print('an error occured above');
+    });
+  }
+  List<Location> _locations = await locationFromAddress(tripLocation);
+  locationCoordinates.add(_locations[0].latitude);
+  locationCoordinates.add(_locations[0].longitude);
+  List<double> coordinatesOutput = [];
+  for (var each in locationCoordinates) {
+    coordinatesOutput.add(each);
+  }
+  print(coordinatesOutput);
+  return coordinatesOutput;
+}
+
+Widget menu() {
+  return Container(
+      color: Colors.white,
+      child: TabBar(
+        labelColor: Colors.black,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicatorPadding: EdgeInsets.all(5),
+        tabs: [
+          Tab(text: "Home", icon: Icon(Icons.home)),
+          Tab(text: "Navigation", icon: Icon(Icons.navigation))
+        ],
+      ));
 }
 
 List<Trip> sortedDates = [];

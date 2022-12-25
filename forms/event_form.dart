@@ -3,7 +3,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/main.dart';
-import 'package:trip_reminder/profile/event_listings.dart';
 
 class UserFormCase extends StatelessWidget {
   const UserFormCase({
