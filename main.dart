@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
 import 'package:trip_reminder/forms/event_form.dart';
 import 'profile/event_listings.dart';
-import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:trip_reminder/api-ORS/openRouteService.dart';
+import 'package:trip_reminder/ExpandedNavigationServices.dart';
 
 void main() {
   runApp(MaterialApp(home: Home()));
@@ -26,13 +27,63 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  late Position _currentPosition;
   RouteTaken? _routeTaken = RouteTaken.driving;
+  ValueNotifier<int> just_started = ValueNotifier(0);
   final TextEditingController _controller = TextEditingController();
+  StreamSubscription<Position>? positionStream;
+  StreamSubscription<Position>? positionStream1;
+  Position? _position;
+  //final initialMapController = MapController();
+  final currentMapController = MapController();
   @override
   void initState() {
     _controller.text = "current location";
+    just_started.value = 0;
+    loadingLocation();
     super.initState();
+  }
+
+  void loadingLocation() async {
+    if (just_started.value == 0) {
+      initialMarkers.clear();
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.unableToDetermine) {
+        LocationPermission permission = await Geolocator.requestPermission();
+      } else if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+        await Geolocator.openLocationSettings();
+      }
+      _position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      initialMarkers.add(
+        Marker(
+          point: LatLng(
+              _position!.latitude.toDouble(), _position!.longitude.toDouble()),
+          builder: ((context) => Icon(Icons.circle)),
+        ),
+      );
+      final LocationSettings locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      );
+      positionStream1 =
+          Geolocator.getPositionStream(locationSettings: locationSettings)
+              .listen((Position? position) {
+        setState(() {
+          initialMarkers.removeLast();
+          _position = position;
+          initialMarkers.add(
+            Marker(
+              point: LatLng(
+                  position!.latitude.toDouble(), position.longitude.toDouble()),
+              builder: ((context) => Icon(Icons.circle)),
+            ),
+          );
+          // initialMapController.move(
+          //     LatLng(_position!.latitude, _position!.longitude), 15.0);
+        });
+      });
+    }
   }
 
   final TextEditingController _locationinput = TextEditingController();
@@ -76,6 +127,7 @@ class _HomeState extends State<Home> {
           bottomNavigationBar: menu(),
           body: TabBarView(children: [
             FutureBuilder<List<Trip>>(
+              //key: UniqueKey(),
               future: sortList(),
               builder: (context, snapshot) {
                 if (snapshot.hasData &&
@@ -146,53 +198,47 @@ class _HomeState extends State<Home> {
                             }),
                       ),
                       SizedBox(height: 5),
-                      Padding(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                          child: ListTile(
-                              title: const Text('Driving'),
-                              leading: Radio<RouteTaken>(
-                                value: RouteTaken.driving,
-                                groupValue: _routeTaken,
-                                activeColor: Colors.white,
-                                onChanged: (RouteTaken? value) {
-                                  setState(() {
-                                    _routeTaken = value;
-                                  });
-                                },
-                              ))),
-                      Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                          ),
-                          child: ListTile(
-                              title: const Text('Walking'),
-                              leading: Radio<RouteTaken>(
-                                value: RouteTaken.walking,
-                                groupValue: _routeTaken,
-                                activeColor: Colors.white,
-                                onChanged: (RouteTaken? value) {
-                                  setState(() {
-                                    _routeTaken = value;
-                                  });
-                                },
-                              ))),
-                      Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                          ),
-                          child: ListTile(
-                              title: const Text('Biking'),
-                              leading: Radio<RouteTaken>(
-                                value: RouteTaken.biking,
-                                groupValue: _routeTaken,
-                                activeColor: Colors.white,
-                                onChanged: (RouteTaken? value) {
-                                  setState(() {
-                                    _routeTaken = value;
-                                  });
-                                },
-                              ))),
+                      Row(children: [
+                        Expanded(
+                            child: ListTile(
+                                title: Icon(Icons.directions_car),
+                                leading: Radio<RouteTaken>(
+                                  value: RouteTaken.driving,
+                                  groupValue: _routeTaken,
+                                  activeColor: Colors.white,
+                                  onChanged: (RouteTaken? value) {
+                                    setState(() {
+                                      _routeTaken = value;
+                                    });
+                                  },
+                                ))),
+                        Expanded(
+                            child: ListTile(
+                                title: Icon(Icons.directions_walk),
+                                leading: Radio<RouteTaken>(
+                                  value: RouteTaken.walking,
+                                  groupValue: _routeTaken,
+                                  activeColor: Colors.white,
+                                  onChanged: (RouteTaken? value) {
+                                    setState(() {
+                                      _routeTaken = value;
+                                    });
+                                  },
+                                ))),
+                        Expanded(
+                            child: ListTile(
+                                title: Icon(Icons.directions_bike),
+                                leading: Radio<RouteTaken>(
+                                  value: RouteTaken.biking,
+                                  groupValue: _routeTaken,
+                                  activeColor: Colors.white,
+                                  onChanged: (RouteTaken? value) {
+                                    setState(() {
+                                      _routeTaken = value;
+                                    });
+                                  },
+                                ))),
+                      ]),
                       ElevatedButton(
                           child: const Text('Submit'),
                           onPressed: () async {
@@ -207,6 +253,18 @@ class _HomeState extends State<Home> {
                               } else {
                                 route = 'cycling-road';
                               }
+                              LocationPermission permission =
+                                  await Geolocator.checkPermission();
+                              if (permission == LocationPermission.denied ||
+                                  permission ==
+                                      LocationPermission.unableToDetermine) {
+                                LocationPermission permission =
+                                    await Geolocator.requestPermission();
+                              } else if (permission ==
+                                  LocationPermission.deniedForever) {
+                                await Geolocator.openAppSettings();
+                                await Geolocator.openLocationSettings();
+                              }
                               await coordinates(tripName, tripLocation);
                               await getJsonData(ORSCaller(
                                   latStart: locationCoordinates[0],
@@ -214,99 +272,157 @@ class _HomeState extends State<Home> {
                                   latEnd: locationCoordinates[2],
                                   longEnd: locationCoordinates[3],
                                   tripRoute: route));
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => HomeMap(),
-                                  ));
+                              Position position =
+                                  await Geolocator.getCurrentPosition(
+                                      desiredAccuracy: LocationAccuracy.high);
+                              final LocationSettings locationSettings =
+                                  LocationSettings(
+                                accuracy: LocationAccuracy.bestForNavigation,
+                              );
+                              markers.add(Marker(
+                                point: LatLng(locationCoordinates[0],
+                                    locationCoordinates[1]),
+                                width: 80,
+                                height: 80,
+                                builder: (context) => Icon(Icons.location_pin),
+                              ));
+                              markers.add(
+                                Marker(
+                                  point: LatLng(locationCoordinates[2],
+                                      locationCoordinates[3]),
+                                  width: 80,
+                                  height: 80,
+                                  builder: (context) =>
+                                      Icon(Icons.location_pin),
+                                ),
+                              );
+                              just_started.value++;
+                              //positionStream1!.pause();
+                              //positionStream1!.cancel();
+                              //initialMapController.dispose();
+                              positionStream = Geolocator.getPositionStream(
+                                      locationSettings: locationSettings)
+                                  .listen((Position? position) {
+                                setState(() {
+                                  markers.removeLast();
+                                  markers.add(
+                                    Marker(
+                                      point: LatLng(
+                                          position!.latitude.toDouble(),
+                                          position.longitude.toDouble()),
+                                      builder: ((context) =>
+                                          Icon(Icons.circle)),
+                                    ),
+                                  );
+                                  //currentMapController.center;
+                                });
+                              });
                             }
-                          })
+                          }),
+                      ValueListenableBuilder(
+                        valueListenable: just_started,
+                        builder: (context, value, widget) {
+                          return Column(children: [
+                            Container(
+                                height:
+                                    MediaQuery.of(context).size.height - 475,
+                                child: flutter_osm_map()),
+                            full_navigation_button()
+                          ]);
+                        },
+                      ),
                     ],
                   ),
                 ),
-                //flutter_map()
               ),
-              //Expanded(child: flutter_osm_map()),
             ]),
           ]),
         ));
   }
-}
 
-List<LatLng> points = [];
+  Widget full_navigation_button() {
+    if (just_started.value == 0) {
+      return SizedBox();
+    } else {
+      return ElevatedButton(
+        onPressed: () {
+          //positionStream!.cancel();
+          Navigator.push(
+              this.context,
+              MaterialPageRoute(
+                builder: (context) => const HomeMap(),
+              ));
+        },
+        child: Text(
+          style: TextStyle(color: Colors.white),
+          'See full map and directions',
+        ),
+      );
+    }
+  }
 
-class HomeMap extends StatefulWidget {
-  const HomeMap({super.key});
-
-  @override
-  State<HomeMap> createState() => _HomeMapState();
-}
-
-class _HomeMapState extends State<HomeMap> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-          backgroundColor: Colors.lightBlue,
-          elevation: 0,
-          title: Text('Map',
-              style: TextStyle(
-                color: Colors.white,
-                letterSpacing: 2.0,
-              ))),
-      body: flutter_osm_map(),
-    );
+  Widget flutter_osm_map() {
+    if (just_started.value == 0) {
+      try {
+        return FlutterMap(
+          // mapController: initialMapController,
+          options: MapOptions(
+            center: LatLng(_position!.latitude.toDouble(),
+                _position!.longitude.toDouble()),
+            zoom: 15.0,
+            maxZoom: 19.0,
+            keepAlive: true,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              userAgentPackageName: 'com.trip_reminder.app',
+            ),
+            MarkerLayer(key: UniqueKey(), markers: initialMarkers),
+          ],
+        );
+      } catch (e) {
+        return Center(child: Text("Enter a valid address"));
+      }
+    } else {
+      return FlutterMap(
+        mapController: currentMapController,
+        options: MapOptions(
+          center: LatLng(locationCoordinates[0], locationCoordinates[1]),
+          zoom: 10.0,
+          maxZoom: 19.0,
+          keepAlive: true,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            userAgentPackageName: 'com.trip_reminder.app',
+          ),
+          MarkerLayer(key: UniqueKey(), markers: markers),
+          PolylineLayer(
+            polylineCulling: false,
+            polylines: [
+              Polyline(strokeWidth: 5, points: points, color: Colors.blue)
+            ],
+          ),
+        ],
+      );
+    }
   }
 }
 
-Widget flutter_osm_map() {
-  return FlutterMap(
-    //mapController: mapController,
-    options: MapOptions(
-      center: LatLng(locationCoordinates[0], locationCoordinates[1]),
-      zoom: 13.0,
-      maxZoom: 19.0,
-      keepAlive: true,
-    ),
-    children: [
-      TileLayer(
-        urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        userAgentPackageName: 'com.trip_reminder.app',
-      ),
-      MarkerLayer(
-        markers: [
-          Marker(
-            point: LatLng(locationCoordinates[0], locationCoordinates[1]),
-            width: 80,
-            height: 80,
-            builder: (context) => Icon(Icons.circle),
-          ),
-          Marker(
-            point: LatLng(locationCoordinates[2], locationCoordinates[3]),
-            width: 80,
-            height: 80,
-            builder: (context) => Icon(Icons.navigation),
-          ),
-        ],
-      ),
-      PolylineLayer(
-        polylineCulling: false,
-        polylines: [
-          Polyline(strokeWidth: 5, points: points, color: Colors.blue)
-        ],
-      ),
-    ],
-  );
-}
-
+List<Marker> initialMarkers = [];
+List<Marker> markers = [];
+List<LatLng> points = [];
 List<double> locationCoordinates = [];
+List<double> temp_locationCoordinates = [];
 
 Future<void> coordinates(tripName, tripLocation) async {
   locationCoordinates.clear();
   if (tripName.replaceAll(' ', '').toLowerCase() != 'currentlocation') {
-    List<Location> locations = await locationFromAddress(tripName);
-    locationCoordinates.add(locations[0].latitude);
-    locationCoordinates.add(locations[0].longitude);
+    await getJsonDataForCoordinates(CoordinatesHelper(area: tripName));
+    locationCoordinates.add(temp_locationCoordinates[0]);
+    locationCoordinates.add(temp_locationCoordinates[1]);
   } else {
     Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
@@ -319,12 +435,13 @@ Future<void> coordinates(tripName, tripLocation) async {
       print('an error occured above');
     });
   }
-  List<Location> _locations = await locationFromAddress(tripLocation);
-  locationCoordinates.add(_locations[0].latitude);
-  locationCoordinates.add(_locations[0].longitude);
+  temp_locationCoordinates.clear();
+  await getJsonDataForCoordinates(CoordinatesHelper(area: tripLocation));
   points.clear();
-  // points.add(LatLng(locationCoordinates[0], locationCoordinates[1]));
-  // points.add(LatLng(locationCoordinates[2], locationCoordinates[3]));
+  points.add(LatLng(locationCoordinates[0], locationCoordinates[1]));
+  locationCoordinates.add(temp_locationCoordinates[0]);
+  locationCoordinates.add(temp_locationCoordinates[1]);
+  print(locationCoordinates);
 }
 
 Widget menu() {
@@ -400,7 +517,7 @@ class TripRoute extends StatefulWidget {
     required this.onTap,
   });
   final Trip trip;
-  final VoidCallback onTap;
+  final onTap;
 
   @override
   State<TripRoute> createState() => _TripRouteState();
