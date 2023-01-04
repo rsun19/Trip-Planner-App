@@ -59,3 +59,36 @@ class Directions {
   Directions(this.directions);
   List<dynamic> directions;
 }
+
+class CoordinatesHelper {
+  CoordinatesHelper({required this.area});
+  final String area;
+  final String apiKey =
+      'INSERT API KEY HERE';
+  final String url = 'https://api.openrouteservice.org/geocode/search';
+
+  Future getData() async {
+    http.Response response =
+        await http.get(Uri.parse('$url?api_key=$apiKey&text=$area'));
+    if (response.statusCode == 200) {
+      String data = response.body;
+      return jsonDecode(data);
+    } else {
+      print(response.statusCode);
+    }
+  }
+}
+
+Future getJsonDataForCoordinates(CoordinatesHelper address) async {
+  CoordinatesHelper coordinates = CoordinatesHelper(area: address.area);
+  try {
+    var data = await coordinates.getData();
+    print(data);
+    Directions coordinatesResponse =
+        Directions(data['features'][0]['geometry']['coordinates']);
+    temp_locationCoordinates.add(coordinatesResponse.directions[1]);
+    temp_locationCoordinates.add(coordinatesResponse.directions[0]);
+  } catch (e) {
+    print(e);
+  }
+}
