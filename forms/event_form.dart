@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/main.dart';
+import 'package:trip_reminder/api-ORS/openRouteService.dart';
 
 class UserFormCase extends StatelessWidget {
   const UserFormCase({
@@ -184,8 +185,12 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                   final String tripLocation = widget.trip.location.toString();
                   final List hour_ISO = date.split('T');
                   final String ISO8601 = hour_ISO[0] + "T" + time + ":00.000";
-                  _insert(name, description, ISO8601, location, tripName,
-                      tripLocation);
+                  await getJsonDataForCoordinates(
+                      CoordinatesHelper(area: tripLocation));
+                  final String locationCoordinates =
+                      "${temp_locationCoordinates[0].toString()}, ${temp_locationCoordinates[1].toString()}";
+                  _insert(name, description, ISO8601, locationCoordinates,
+                      tripName, tripLocation);
                   compareTimes(tripName, tripLocation);
                   Navigator.push(
                       context,
