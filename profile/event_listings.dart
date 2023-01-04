@@ -4,6 +4,11 @@ import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_form.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/main.dart';
+import 'package:trip_reminder/ExpandedNavigationServices.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class tripEvent {
   const tripEvent(
@@ -64,67 +69,118 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          title: Text(
-            '${widget.trip.title}',
-            style: TextStyle(
-              color: Colors.white,
-              letterSpacing: 2.0,
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return UserFormCase(trip: widget.trip);
-                }));
-              },
-              child: Text(
-                'Add More Events',
+    return DefaultTabController(
+        length: 2,
+        child: Scaffold(
+            appBar: AppBar(
+              elevation: 0,
+              title: Text(
+                '${widget.trip.title}',
                 style: TextStyle(
                   color: Colors.white,
-                  letterSpacing: 2,
+                  letterSpacing: 2.0,
                 ),
               ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) {
+                      return UserFormCase(trip: widget.trip);
+                    }));
+                  },
+                  child: Text(
+                    'Add More Events',
+                    style: TextStyle(
+                      color: Colors.white,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ],
             ),
+            backgroundColor: Colors.lightBlue,
+            bottomNavigationBar: eventMenu(),
+            body: TabBarView(children: [
+              SizedBox(
+                  height: 1000,
+                  width: 1000,
+                  child: FutureBuilder<List<tripEvent>>(
+                      future: sortedList(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData &&
+                            snapshot.connectionState == ConnectionState.done) {
+                          return ListView.builder(
+                              itemCount: snapshot.data!.length,
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                              itemBuilder: (context, index) {
+                                return Center(
+                                    key: new Key(index.toString()),
+                                    child: eventInfo(
+                                      tripevent: snapshot.data![index],
+                                      trip: widget.trip,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) => EventView(
+                                                  trip: widget.trip,
+                                                  tripevent:
+                                                      snapshot.data![index])),
+                                        );
+                                      },
+                                    ));
+                              });
+                        } else {
+                          return CircularProgressIndicator();
+                        }
+                      })),
+              flutter_osm_map_big()
+            ])));
+  }
+
+  Widget eventMenu() {
+    return Container(
+        color: Colors.white,
+        child: TabBar(
+          labelColor: Colors.black,
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorPadding: EdgeInsets.all(5),
+          tabs: [
+            Tab(text: "Events", icon: Icon(Icons.notes)),
+            Tab(text: "Maps", icon: Icon(Icons.map))
           ],
+        ));
+  }
+
+  Widget flutter_osm_map_big() {
+    if (eventSortedDates.length == 0) {
+      return Center(child: Text("Please enter some events"));
+    } else {
+      return FlutterMap(
+        //mapController: mapController,
+        options: MapOptions(
+          center: LatLng(locationCoordinates[0], locationCoordinates[1]),
+          zoom: 7.0,
+          maxZoom: 19.0,
+          keepAlive: true,
         ),
-        backgroundColor: Colors.lightBlue,
-        body: SizedBox(
-            height: 1000,
-            width: 1000,
-            child: FutureBuilder<List<tripEvent>>(
-                future: sortedList(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData &&
-                      snapshot.connectionState == ConnectionState.done) {
-                    return ListView.builder(
-                        itemCount: snapshot.data!.length,
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                        itemBuilder: (context, index) {
-                          return Center(
-                              key: new Key(index.toString()),
-                              child: eventInfo(
-                                tripevent: snapshot.data![index],
-                                trip: widget.trip,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => EventView(
-                                            trip: widget.trip,
-                                            tripevent: snapshot.data![index])),
-                                  );
-                                },
-                              ));
-                        });
-                  } else {
-                    return CircularProgressIndicator();
-                  }
-                })));
+        children: [
+          TileLayer(
+            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            userAgentPackageName: 'com.trip_reminder.app',
+          ),
+          MarkerLayer(key: UniqueKey(), markers: markers),
+          PolylineLayer(
+            polylineCulling: false,
+            polylines: [
+              Polyline(strokeWidth: 5, points: points, color: Colors.blue)
+            ],
+          ),
+        ],
+      );
+    }
   }
 }
 
