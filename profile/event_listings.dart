@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/database/user_info.dart';
@@ -67,6 +69,9 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  Position? _position;
+  StreamSubscription<Position>? positionStream;
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -136,7 +141,16 @@ class _ProfileState extends State<Profile> {
                           return CircularProgressIndicator();
                         }
                       })),
-              flutter_osm_map_big()
+              Container(
+                  child: FutureBuilder<List<Marker>>(
+                      future: eventParser(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.done) {
+                          return flutter_osm_map_big();
+                        } else {
+                          return CircularProgressIndicator();
+                        }
+                      }))
             ])));
   }
 
@@ -161,7 +175,7 @@ class _ProfileState extends State<Profile> {
       return FlutterMap(
         //mapController: mapController,
         options: MapOptions(
-          center: LatLng(locationCoordinates[0], locationCoordinates[1]),
+          center: LatLng(_position!.latitude, _position!.longitude),
           zoom: 7.0,
           maxZoom: 19.0,
           keepAlive: true,
@@ -171,16 +185,69 @@ class _ProfileState extends State<Profile> {
             urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
             userAgentPackageName: 'com.trip_reminder.app',
           ),
-          MarkerLayer(key: UniqueKey(), markers: markers),
-          PolylineLayer(
-            polylineCulling: false,
-            polylines: [
-              Polyline(strokeWidth: 5, points: points, color: Colors.blue)
-            ],
-          ),
+          MarkerLayer(key: UniqueKey(), markers: allEvents),
         ],
       );
     }
+  }
+
+  List<Marker> allEvents = [];
+
+  Future<List<Marker>> eventParser() async {
+    allEvents.clear();
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.unableToDetermine) {
+      LocationPermission permission = await Geolocator.requestPermission();
+    } else if (permission == LocationPermission.deniedForever) {
+      await Geolocator.openAppSettings();
+      await Geolocator.openLocationSettings();
+    }
+    Database db = await UserDatabase.instance.database;
+    int count =
+        Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM users'))
+                ?.toInt() ??
+            0;
+    for (int i = 1; i <= count; i++) {
+      final maps =
+          await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
+      var location = maps[0]['location'].toString();
+      List<dynamic> _location = location.split(",");
+      allEvents.add(Marker(
+        point: LatLng(double.parse(_location[0]), double.parse(_location[1])),
+        width: 80,
+        height: 80,
+        builder: (context) => Icon(Icons.location_pin),
+      ));
+    }
+    _position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    allEvents.add(
+      Marker(
+        point: LatLng(
+            _position!.latitude.toDouble(), _position!.longitude.toDouble()),
+        builder: ((context) => Icon(Icons.circle)),
+      ),
+    );
+    final LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+    );
+    positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .listen((Position? position) {
+      setState(() {
+        initialMarkers.removeLast();
+        _position = position;
+        initialMarkers.add(
+          Marker(
+            point: LatLng(
+                position!.latitude.toDouble(), position.longitude.toDouble()),
+            builder: ((context) => Icon(Icons.circle)),
+          ),
+        );
+      });
+    });
+    return allEvents;
   }
 }
 
