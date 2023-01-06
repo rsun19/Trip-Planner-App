@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
 import 'package:trip_reminder/forms/event_form.dart';
 import 'profile/event_listings.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -33,7 +31,7 @@ class _HomeState extends State<Home> {
   StreamSubscription<Position>? positionStream;
   StreamSubscription<Position>? positionStream1;
   Position? _position;
-  //final initialMapController = MapController();
+  final initialMapController = MapController();
   final currentMapController = MapController();
   @override
   void initState() {
@@ -63,26 +61,6 @@ class _HomeState extends State<Home> {
           builder: ((context) => Icon(Icons.circle)),
         ),
       );
-      final LocationSettings locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-      );
-      positionStream1 =
-          Geolocator.getPositionStream(locationSettings: locationSettings)
-              .listen((Position? position) {
-        setState(() {
-          initialMarkers.removeLast();
-          _position = position;
-          initialMarkers.add(
-            Marker(
-              point: LatLng(
-                  position!.latitude.toDouble(), position.longitude.toDouble()),
-              builder: ((context) => Icon(Icons.circle)),
-            ),
-          );
-          // initialMapController.move(
-          //     LatLng(_position!.latitude, _position!.longitude), 15.0);
-        });
-      });
     }
   }
 
@@ -127,18 +105,16 @@ class _HomeState extends State<Home> {
           bottomNavigationBar: menu(),
           body: TabBarView(children: [
             FutureBuilder<List<Trip>>(
-              //key: UniqueKey(),
               future: sortList(),
               builder: (context, snapshot) {
-                if (snapshot.hasData &&
-                    snapshot.connectionState == ConnectionState.done) {
+                if (snapshot.hasData) {
                   return ListView.builder(
                       itemCount: snapshot.data!.length,
                       shrinkWrap: true,
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                       itemBuilder: (context, index) {
                         return Center(
-                            key: new Key(index.toString()),
+                            key: ObjectKey(Trip),
                             child: TripRoute(
                               trip: snapshot.data![index],
                               onTap: () {
@@ -297,25 +273,27 @@ class _HomeState extends State<Home> {
                                 ),
                               );
                               just_started.value++;
-                              //positionStream1!.pause();
-                              //positionStream1!.cancel();
-                              //initialMapController.dispose();
                               positionStream = Geolocator.getPositionStream(
                                       locationSettings: locationSettings)
                                   .listen((Position? position) {
-                                setState(() {
-                                  markers.removeLast();
-                                  markers.add(
-                                    Marker(
-                                      point: LatLng(
-                                          position!.latitude.toDouble(),
-                                          position.longitude.toDouble()),
-                                      builder: ((context) =>
-                                          Icon(Icons.circle)),
-                                    ),
-                                  );
-                                  //currentMapController.center;
-                                });
+                                if (mounted) {
+                                  setState(() {
+                                    markers.removeLast();
+                                    markers.add(
+                                      Marker(
+                                        point: LatLng(
+                                            position!.latitude.toDouble(),
+                                            position.longitude.toDouble()),
+                                        builder: ((context) =>
+                                            Icon(Icons.circle)),
+                                      ),
+                                    );
+                                    currentMapController.move(
+                                        LatLng(position.latitude,
+                                            position.longitude),
+                                        13);
+                                  });
+                                }
                               });
                             }
                           }),
@@ -346,7 +324,8 @@ class _HomeState extends State<Home> {
     } else {
       return ElevatedButton(
         onPressed: () {
-          //positionStream!.cancel();
+          positionStream!.cancel();
+          currentMapController.dispose();
           Navigator.push(
               this.context,
               MaterialPageRoute(
@@ -365,20 +344,44 @@ class _HomeState extends State<Home> {
     if (just_started.value == 0) {
       try {
         return FlutterMap(
-          // mapController: initialMapController,
+          mapController: initialMapController,
           options: MapOptions(
             center: LatLng(_position!.latitude.toDouble(),
                 _position!.longitude.toDouble()),
             zoom: 15.0,
             maxZoom: 19.0,
             keepAlive: true,
+            onMapReady: () {
+              final LocationSettings locationSettings = LocationSettings(
+                accuracy: LocationAccuracy.bestForNavigation,
+              );
+              positionStream1 = Geolocator.getPositionStream(
+                      locationSettings: locationSettings)
+                  .listen((Position position) {
+                if (mounted) {
+                  setState(() {
+                    initialMarkers.removeLast();
+                    initialMarkers.add(
+                      Marker(
+                        point: LatLng(position.latitude.toDouble(),
+                            position.longitude.toDouble()),
+                        builder: ((context) => Icon(Icons.circle)),
+                      ),
+                    );
+                    initialMapController.move(
+                        LatLng(position.latitude, position.longitude), 13);
+                  });
+                }
+              });
+            },
           ),
           children: [
             TileLayer(
               urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
               userAgentPackageName: 'com.trip_reminder.app',
             ),
-            MarkerLayer(key: UniqueKey(), markers: initialMarkers),
+            MarkerLayer(
+                key: ObjectKey(initialMarkers.last), markers: initialMarkers),
           ],
         );
       } catch (e) {
@@ -389,7 +392,7 @@ class _HomeState extends State<Home> {
         mapController: currentMapController,
         options: MapOptions(
           center: LatLng(locationCoordinates[0], locationCoordinates[1]),
-          zoom: 10.0,
+          zoom: 13.0,
           maxZoom: 19.0,
           keepAlive: true,
         ),
@@ -398,7 +401,7 @@ class _HomeState extends State<Home> {
             urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
             userAgentPackageName: 'com.trip_reminder.app',
           ),
-          MarkerLayer(key: UniqueKey(), markers: markers),
+          MarkerLayer(key: ObjectKey(markers.last), markers: markers),
           PolylineLayer(
             polylineCulling: false,
             polylines: [
@@ -563,7 +566,6 @@ class _TripRouteState extends State<TripRoute> {
                   child: TextButton.icon(
                       onPressed: () {
                         _alertBuilder(context, widget.trip);
-                        setState(() {});
                       },
                       icon: Icon(Icons.delete),
                       label: Text('Delete')),

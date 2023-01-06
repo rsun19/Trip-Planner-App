@@ -1,13 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:trip_reminder/database/user_info.dart';
-import 'package:trip_reminder/forms/event_trip.dart';
-import 'package:trip_reminder/forms/event_form.dart';
-import 'profile/event_listings.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -24,50 +16,63 @@ class _HomeMapState extends State<HomeMap> {
   StreamSubscription<Position>? positionStream;
   bool shouldPop = false;
   final map_controller = MapController();
+  double distance = (directions[0][0]['distance'] * 0.000621371);
+  double time = (directions[0][0]['duration'] / 60);
+
+  @override
+  void initState() {
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   Future.delayed(Duration(seconds: 3), () => positionStreaming());
+    // });
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-        onWillPop: () async {
-          if (shouldPop == false) {
-            //map_controller.dispose();
-            positionStream!.pause();
-          }
-          shouldPop = true;
-          return shouldPop;
+    return Scaffold(
+      body: Stack(children: <Widget>[
+        flutter_osm_map_big(),
+        Positioned(
+            bottom: 0,
+            child: Container(
+                margin: EdgeInsets.fromLTRB(40, 0, 0, 20),
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                    color: Colors.lightBlue,
+                    border: Border.all(color: Colors.black),
+                    borderRadius: BorderRadius.all(Radius.circular(15))),
+                child: Column(
+                  children: [
+                    Text(
+                      'Distance: ${distance.truncate()} miles',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    Text(
+                      'Time: ${time.truncate()} minutes',
+                      style: TextStyle(fontSize: 18),
+                    )
+                  ],
+                )))
+      ]),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.red,
+        child: Text("Exit"),
+        onPressed: () {
+          Navigator.push(this.context,
+              MaterialPageRoute(builder: (context) => const Home()));
         },
-        child: Scaffold(
-            appBar: AppBar(
-                backgroundColor: Colors.lightBlue,
-                elevation: 0,
-                title: Text('Navigation',
-                    style: TextStyle(
-                      color: Colors.white,
-                      letterSpacing: 2.0,
-                    ))),
-            body: flutter_osm_map_big()));
+      ),
+    );
   }
 
   Widget flutter_osm_map_big() {
-    setState(() {
-      final LocationSettings locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-      );
-      positionStream =
-          Geolocator.getPositionStream(locationSettings: locationSettings)
-              .listen((Position? position) {
-        setState(() {
-          markers.removeLast();
-          markers.add(
-            Marker(
-              point: LatLng(
-                  position!.latitude.toDouble(), position.longitude.toDouble()),
-              builder: ((context) => Icon(Icons.circle)),
-            ),
-          );
-          map_controller.center;
-        });
+    if (mounted) {
+      setState(() {
+        final LocationSettings locationSettings = LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+        );
       });
-    });
+    }
     return FlutterMap(
       mapController: map_controller,
       options: MapOptions(
@@ -75,6 +80,27 @@ class _HomeMapState extends State<HomeMap> {
         zoom: 7.0,
         maxZoom: 19.0,
         keepAlive: true,
+        onMapReady: () {
+          final LocationSettings locationSettings = LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+          );
+          positionStream =
+              Geolocator.getPositionStream(locationSettings: locationSettings)
+                  .listen((Position? position) {
+            setState(() {
+              markers.removeLast();
+              markers.add(
+                Marker(
+                  point: LatLng(position!.latitude.toDouble(),
+                      position.longitude.toDouble()),
+                  builder: ((context) => Icon(Icons.circle)),
+                ),
+              );
+              map_controller.move(
+                  LatLng(position.latitude, position.longitude), 13);
+            });
+          });
+        },
       ),
       children: [
         TileLayer(
