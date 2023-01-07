@@ -161,17 +161,18 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
           SizedBox(height: 5),
           Container(
             child: TextFormField(
-                controller: _controllerDescription,
-                decoration: const InputDecoration(
-                  border: UnderlineInputBorder(),
-                  labelText: "Enter an Event Description",
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter some text';
-                  }
-                  return null;
-                }),
+              controller: _controllerDescription,
+              decoration: const InputDecoration(
+                border: UnderlineInputBorder(),
+                labelText: "Enter an Event Description",
+              ),
+              // validator: (value) {
+              //   if (value == null || value.isEmpty) {
+              //     return 'Please enter some text';
+              //   }
+              //   return null;
+              //}
+            ),
           ),
           ElevatedButton(
               onPressed: () async {
@@ -179,6 +180,7 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                   final String name = _controller.text;
                   final String description = _controllerDescription.text;
                   final String location = _controllerLocation.text;
+                  final String fullAddress = _controllerLocation.text;
                   final String date = _dateInput.text;
                   final String time = _timeinput.text;
                   final String tripName = widget.trip.title.toString();
@@ -186,11 +188,11 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                   final List hour_ISO = date.split('T');
                   final String ISO8601 = hour_ISO[0] + "T" + time + ":00.000";
                   await getJsonDataForCoordinates(
-                      CoordinatesHelper(area: tripLocation));
+                      CoordinatesHelper(area: location));
                   final String locationCoordinates =
-                      "${temp_locationCoordinates[0].toString()}, ${temp_locationCoordinates[1].toString()}";
+                      "${temp_locationCoordinates[0].toString()},${temp_locationCoordinates[1].toString()}";
                   _insert(name, description, ISO8601, locationCoordinates,
-                      tripName, tripLocation);
+                      fullAddress, tripName, tripLocation);
                   compareTimes(tripName, tripLocation);
                   Navigator.push(
                       context,
@@ -205,8 +207,8 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
     );
   }
 
-  void _insert(
-      name, description, dateTime, location, tripName, tripLocation) async {
+  void _insert(name, description, dateTime, location, fullAddress, tripName,
+      tripLocation) async {
     Database db = await UserDatabase.instance.database;
 
     Map<String, dynamic> row = {
@@ -214,6 +216,7 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
       UserDatabase.columnDescription: description,
       UserDatabase.columnDateTime: dateTime,
       UserDatabase.columnLocation: location,
+      UserDatabase.fullAddress: fullAddress,
       UserDatabase.columnTripNameEvent: tripName,
       UserDatabase.columnTripLocationEvent: tripLocation
     };
