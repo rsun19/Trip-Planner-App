@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:trip_reminder/globals.dart' as globals;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/database/user_info.dart';
@@ -7,21 +7,25 @@ import 'package:trip_reminder/forms/event_form.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/ExpandedNavigationServices.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:maps_launcher/maps_launcher.dart';
+import 'package:trip_reminder/api-ORS/openRouteService.dart';
+import 'package:trip_reminder/main.dart';
 
 class tripEvent {
   const tripEvent(
       {required this.name,
       required this.description,
       required this.dateTime,
-      required this.location});
+      required this.location,
+      required this.fullAddress});
   final String name;
   final String description;
   final String dateTime;
   final String location;
+  final String fullAddress;
 }
 
 const List<tripEvent> events = const <tripEvent>[];
@@ -47,7 +51,8 @@ Future<tripEvent> get(int id) async {
       name: maps[0][0].toString(),
       description: maps[0][1].toString(),
       dateTime: maps[0][2].toString(),
-      location: maps[0][3].toString());
+      location: maps[0][3].toString(),
+      fullAddress: maps[0][4].toString());
 }
 
 class Profile extends StatefulWidget {
@@ -71,6 +76,15 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   Position? _position;
   StreamSubscription<Position>? positionStream;
+  ValueNotifier<int> just_started = ValueNotifier(0);
+  MapController mapController = MapController();
+
+  @override
+  void initState() {
+    eventParser();
+    just_started.value++;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,44 +127,39 @@ class _ProfileState extends State<Profile> {
                   child: FutureBuilder<List<tripEvent>>(
                       future: sortedList(),
                       builder: (context, snapshot) {
-                        if (snapshot.hasData &&
-                            snapshot.connectionState == ConnectionState.done) {
+                        if (snapshot.hasData) {
                           return ListView.builder(
                               itemCount: snapshot.data!.length,
                               shrinkWrap: true,
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                               itemBuilder: (context, index) {
                                 return Center(
-                                    key: new Key(index.toString()),
-                                    child: eventInfo(
-                                      tripevent: snapshot.data![index],
-                                      trip: widget.trip,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) => EventView(
-                                                  trip: widget.trip,
-                                                  tripevent:
-                                                      snapshot.data![index])),
-                                        );
-                                      },
-                                    ));
+                                  key: ObjectKey(tripEvent),
+                                  child: eventInfo(
+                                    tripevent: snapshot.data![index],
+                                    trip: widget.trip,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => EventView(
+                                                trip: widget.trip,
+                                                tripevent:
+                                                    snapshot.data![index])),
+                                      );
+                                    },
+                                  ),
+                                );
                               });
                         } else {
                           return CircularProgressIndicator();
                         }
                       })),
-              Container(
-                  child: FutureBuilder<List<Marker>>(
-                      future: eventParser(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.done) {
-                          return flutter_osm_map_big();
-                        } else {
-                          return CircularProgressIndicator();
-                        }
-                      }))
+              ValueListenableBuilder(
+                  valueListenable: just_started,
+                  builder: ((context, value, widget) {
+                    return flutter_osm_map_big();
+                  }))
             ])));
   }
 
@@ -169,23 +178,49 @@ class _ProfileState extends State<Profile> {
   }
 
   Widget flutter_osm_map_big() {
-    if (eventSortedDates.length == 0) {
+    if (allEvents.length == 0) {
       return Center(child: Text("Please enter some events"));
     } else {
       return FlutterMap(
-        //mapController: mapController,
+        mapController: mapController,
         options: MapOptions(
           center: LatLng(_position!.latitude, _position!.longitude),
-          zoom: 7.0,
+          zoom: 13.0,
           maxZoom: 19.0,
           keepAlive: true,
+          onMapReady: () {
+            //eventParser();
+            final LocationSettings locationSettings = LocationSettings(
+              accuracy: LocationAccuracy.bestForNavigation,
+            );
+            positionStream =
+                Geolocator.getPositionStream(locationSettings: locationSettings)
+                    .listen((Position? position) {
+              if (this.mounted) {
+                setState(() {
+                  initialMarkers.removeLast();
+                  _position = position;
+                  globals.currentPosition = position;
+                  initialMarkers.add(
+                    Marker(
+                      point: LatLng(position!.latitude.toDouble(),
+                          position.longitude.toDouble()),
+                      builder: ((context) => Icon(Icons.circle)),
+                    ),
+                  );
+                  mapController.move(
+                      LatLng(position.latitude, position.longitude), 16);
+                });
+              }
+            });
+          },
         ),
         children: [
           TileLayer(
             urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
             userAgentPackageName: 'com.trip_reminder.app',
           ),
-          MarkerLayer(key: UniqueKey(), markers: allEvents),
+          MarkerLayer(key: ObjectKey(allEvents.last), markers: allEvents),
         ],
       );
     }
@@ -222,6 +257,7 @@ class _ProfileState extends State<Profile> {
     }
     _position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
+    globals.currentPosition = _position;
     allEvents.add(
       Marker(
         point: LatLng(
@@ -229,24 +265,6 @@ class _ProfileState extends State<Profile> {
         builder: ((context) => Icon(Icons.circle)),
       ),
     );
-    final LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation,
-    );
-    positionStream =
-        Geolocator.getPositionStream(locationSettings: locationSettings)
-            .listen((Position? position) {
-      setState(() {
-        initialMarkers.removeLast();
-        _position = position;
-        initialMarkers.add(
-          Marker(
-            point: LatLng(
-                position!.latitude.toDouble(), position.longitude.toDouble()),
-            builder: ((context) => Icon(Icons.circle)),
-          ),
-        );
-      });
-    });
     return allEvents;
   }
 }
@@ -275,6 +293,11 @@ class _eventInfoState extends State<eventInfo> {
   late var _time = DateFormat.Hm().parse(dateTimeList[1].substring(0, 5));
   late var time = DateFormat.jm().format(_time);
   late String location = widget.tripevent.location;
+  late List destination_coordinates = widget.tripevent.location.split(",");
+  late double lat = double.parse(destination_coordinates[0]);
+  late double lng = double.parse(destination_coordinates[1]);
+  late String fullAddress = widget.tripevent.fullAddress;
+  Position? _position;
 
   Widget build(BuildContext context) {
     return InkWell(
@@ -283,7 +306,7 @@ class _eventInfoState extends State<eventInfo> {
         },
         child: Container(
             height: 200,
-            width: 250,
+            width: MediaQuery.of(context).size.height,
             margin: EdgeInsets.fromLTRB(0, 20, 0, 0),
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -315,20 +338,85 @@ class _eventInfoState extends State<eventInfo> {
                       ),
                     ),
                     SizedBox(height: 40),
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black),
-                        borderRadius: BorderRadius.all(Radius.circular(15)),
-                      ),
-                      child: TextButton.icon(
-                          onPressed: () {
-                            _alertBuilder(
-                                context, widget.trip, widget.tripevent);
-                            setState(() {});
-                          },
-                          icon: Icon(Icons.delete),
-                          label: Text('Delete')),
-                    ),
+                    Row(children: [
+                      Container(
+                          decoration: BoxDecoration(
+                              border: Border.all(color: Colors.black),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(15))),
+                          child: TextButton.icon(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                    context: context,
+                                    builder: (context) {
+                                      return Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ListTile(
+                                              leading: Icon(Icons.navigation),
+                                              title:
+                                                  Text('Use In-App Navigation'),
+                                              onTap: () {
+                                                markers.clear();
+                                                points.clear();
+                                                if (locationCoordinates
+                                                    .isEmpty) {
+                                                  locationCoordinates.add(
+                                                      globals.currentPosition!
+                                                          .latitude);
+                                                  locationCoordinates.add(
+                                                      globals.currentPosition!
+                                                          .longitude);
+                                                }
+                                                markers.add(
+                                                  Marker(
+                                                      point: LatLng(
+                                                          globals
+                                                              .currentPosition!
+                                                              .latitude,
+                                                          globals
+                                                              .currentPosition!
+                                                              .longitude),
+                                                      builder: ((context) =>
+                                                          Icon(Icons
+                                                              .navigation))),
+                                                );
+                                                points.add(LatLng(
+                                                    globals.currentPosition!
+                                                        .latitude,
+                                                    globals.currentPosition!
+                                                        .longitude));
+                                                _navigationChoice(
+                                                    context, lat, lng);
+                                              }),
+                                          ListTile(
+                                              leading: Icon(Icons.navigation),
+                                              title: Text('Use Google Maps'),
+                                              onTap: () {
+                                                MapsLauncher.launchQuery(widget
+                                                    .tripevent.fullAddress);
+                                              })
+                                        ],
+                                      );
+                                    });
+                              },
+                              icon: Icon(Icons.navigation),
+                              label: Text('Navigate'))),
+                      SizedBox(width: (MediaQuery.of(context).size.width) / 4),
+                      Container(
+                          decoration: BoxDecoration(
+                              border: Border.all(color: Colors.black),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(15))),
+                          child: TextButton.icon(
+                              onPressed: () {
+                                _alertBuilder(
+                                    context, widget.trip, widget.tripevent);
+                                setState(() {});
+                              },
+                              icon: Icon(Icons.delete),
+                              label: Text('Delete'))),
+                    ]),
                   ],
                 ),
               ),
@@ -352,19 +440,13 @@ class EventView extends StatefulWidget {
 
 class _EventViewState extends State<EventView> {
   late List dateTimeList = widget.tripevent.dateTime.split('T');
-
   late var _date = DateFormat("yyyy-MM-dd").parse(dateTimeList[0]);
-
   late var date = DateFormat("MM/dd/yyyy").format(_date);
-
   late var _time = DateFormat.Hm().parse(dateTimeList[1].substring(0, 5));
-
   late var time = DateFormat.jm().format(_time);
 
   @override
   Widget build(BuildContext context) {
-    //return InkWell(
-    //child:
     return Scaffold(
         appBar: AppBar(
           elevation: 0,
@@ -411,7 +493,7 @@ class _EventViewState extends State<EventView> {
                 SizedBox(height: 20),
                 Container(
                   child: Text(
-                    'Location: ${widget.tripevent.location}',
+                    'Location: ${widget.tripevent.fullAddress}',
                     style: TextStyle(
                         //fontSize: 20,
                         //letterSpacing: .5,
@@ -467,7 +549,8 @@ Future<List<tripEvent>> sortedList() async {
         name: maps[0]['name'].toString(),
         description: maps[0]['description'].toString(),
         dateTime: maps[0]['dateTime'].toString(),
-        location: maps[0]['location'].toString()));
+        location: maps[0]['location'].toString(),
+        fullAddress: maps[0]['fullAddress'].toString()));
   }
   eventSortedDates.sort((a, b) {
     return a.dateTime.compareTo(b.dateTime);
@@ -490,6 +573,93 @@ Future<List<tripEvent>> sortedList() async {
 
 List<tripEvent> eventSortedDates = [];
 List<tripEvent> eventPassedDates = [];
+List<Marker> temp_marker = [];
+List<LatLng> temp_point = [];
+
+Future<void> _navigationChoice(BuildContext context, lat, lng) async {
+  return showDialog<void>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('How would you like to travel?'),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Driving'),
+            onPressed: () async {
+              await getJsonData(ORSCaller(
+                  latStart: points[0].latitude,
+                  longStart: points[0].longitude,
+                  latEnd: lat,
+                  longEnd: lng,
+                  tripRoute: 'driving-car'));
+              markers.add(
+                Marker(
+                    point: LatLng(lat, lng),
+                    builder: ((context) => Icon(Icons.circle))),
+              );
+              points.add(
+                LatLng(lat, lng),
+              );
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeMap(),
+                  ));
+            },
+          ),
+          TextButton(
+            child: const Text('Walking'),
+            onPressed: () async {
+              await getJsonData(ORSCaller(
+                  latStart: points[0].latitude,
+                  longStart: points[0].longitude,
+                  latEnd: lat,
+                  longEnd: lng,
+                  tripRoute: 'foot-walking'));
+              markers.add(
+                Marker(
+                    point: LatLng(lat, lng),
+                    builder: ((context) => Icon(Icons.circle))),
+              );
+              points.add(
+                LatLng(lat, lng),
+              );
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeMap(),
+                  ));
+            },
+          ),
+          TextButton(
+            child: const Text('Biking'),
+            onPressed: () async {
+              await getJsonData(ORSCaller(
+                  latStart: points[0].latitude,
+                  longStart: points[0].longitude,
+                  latEnd: lat,
+                  longEnd: lng,
+                  tripRoute: 'cycling-road'));
+              markers.add(
+                Marker(
+                    point: LatLng(lat, lng),
+                    builder: ((context) => Icon(Icons.circle))),
+              );
+              points.add(
+                LatLng(lat, lng),
+              );
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeMap(),
+                  ));
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
 
 Future<void> _alertBuilder(
     BuildContext context, Trip trip, tripEvent tripevent) async {
@@ -506,10 +676,8 @@ Future<void> _alertBuilder(
                   tripevent.name.toString(),
                   tripevent.description.toString(),
                   tripevent.dateTime.toString(),
-                  tripevent.location.toString());
+                  tripevent.fullAddress.toString());
               sortedList();
-              //getTime(trip.title.toString(), trip.location.toString());
-              //print(startEndList);
               compareTimes(trip.title.toString(), trip.location.toString());
               Navigator.push(
                   context,
@@ -531,9 +699,9 @@ Future<void> _alertBuilder(
 }
 
 Future delete(String tripName, String description, String datetime,
-    String location) async {
+    String fullAddress) async {
   Database db = await UserDatabase.instance.database;
   final maps = await db.rawDelete(
-      'DELETE FROM users WHERE name = ? AND description = ? AND dateTime = ? AND location = ?',
-      [tripName, description, datetime, location]);
+      'DELETE FROM users WHERE name = ? AND description = ? AND dateTime = ? AND fullAddress = ?',
+      [tripName, description, datetime, fullAddress]);
 }
