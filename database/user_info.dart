@@ -8,11 +8,12 @@ class UserInfo {
   late String description;
   late String dateTime;
   late String location;
+  late String fullAddress;
   late String tripName;
   late String tripLocation;
 
   UserInfo(this.id, this.name, this.description, this.dateTime, this.location,
-      this.tripName, this.tripLocation);
+      this.fullAddress, this.tripName, this.tripLocation);
 
   Map<String, dynamic> toMap() {
     return {
@@ -21,6 +22,7 @@ class UserInfo {
       UserDatabase.columnDescription: description,
       UserDatabase.columnDateTime: dateTime,
       UserDatabase.columnLocation: location,
+      UserDatabase.fullAddress: fullAddress,
       UserDatabase.columnTripNameEvent: tripName,
       UserDatabase.columnTripLocationEvent: tripLocation,
     };
@@ -65,6 +67,7 @@ class UserDatabase {
   static final columnTripLocationEvent = 'tripLocationEvent';
   static final columnTripStartDate = 'tripStartDate';
   static final columnTripEndDate = 'tripEndDate';
+  static final fullAddress = 'fullAddress';
 
   UserDatabase._privateConstructor();
   static final UserDatabase instance = UserDatabase._privateConstructor();
@@ -86,9 +89,10 @@ class UserDatabase {
           $columnDescription TEXT,
           $columnDateTime TEXT,
           $columnLocation TEXT,
+          $fullAddress TEXT,
           $columnTripNameEvent TEXT,
           $columnTripLocationEvent TEXT,
-          createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""",
     );
     await db.execute(
