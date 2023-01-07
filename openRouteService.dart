@@ -35,8 +35,23 @@ class ORSCaller {
   }
 }
 
+Future getData() async {
+    http.Response response = await http.get(Uri.parse(
+        '$url$tripRoute?api_key=$apiKey&start=$longStart,$latStart&end=$longEnd,$latEnd'));
+    print(
+        '$url$tripRoute?api_key=$apiKey&start=$longStart,$latStart&end=$longEnd,$latEnd');
+    if (response.statusCode == 200) {
+      String data = response.body;
+      return jsonDecode(data);
+    } else {
+      print(response.statusCode);
+    }
+  }
+}
+
 Future getJsonData(ORSCaller orsCaller) async {
   directions.clear();
+  nav_points.clear();
   ORSCaller directionsInfo = ORSCaller(
       latStart: orsCaller.latStart,
       longStart: orsCaller.longStart,
@@ -51,21 +66,17 @@ Future getJsonData(ORSCaller orsCaller) async {
     NavigtionDirections turns =
         NavigtionDirections(data['features'][0]['properties']['segments']);
     directions.add(turns.turns);
-    print(directions.length);
-    print(directions.toString());
     for (int i = 0; i < line.directions.length; i++) {
       points.add(LatLng(line.directions[i][1], line.directions[i][0]));
+      nav_points.add(LatLng(line.directions[i][1], line.directions[i][0]));
     }
-    points.add(LatLng(locationCoordinates[2], locationCoordinates[3]));
   } catch (e) {
     print(e);
   }
 }
 
+List<LatLng> nav_points = [];
 List<dynamic> directions = [];
-//access distance (seconds): directions[0]['distance']
-//access duration (meters): directions[0]['duration']
-//access steps: directions[0]['steps']
 
 class Directions {
   Directions(this.directions);
@@ -76,7 +87,6 @@ class NavigtionDirections {
   NavigtionDirections(this.turns);
   List<dynamic> turns;
 }
-
 
 class CoordinatesHelper {
   CoordinatesHelper({required this.area});
