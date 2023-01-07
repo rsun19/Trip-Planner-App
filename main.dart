@@ -248,6 +248,8 @@ class _HomeState extends State<Home> {
                                   latEnd: locationCoordinates[2],
                                   longEnd: locationCoordinates[3],
                                   tripRoute: route));
+                              points.add(LatLng(locationCoordinates[2],
+                                  locationCoordinates[3]));
                               Position position =
                                   await Geolocator.getCurrentPosition(
                                       desiredAccuracy: LocationAccuracy.high);
@@ -324,8 +326,8 @@ class _HomeState extends State<Home> {
     } else {
       return ElevatedButton(
         onPressed: () {
-          positionStream!.cancel();
-          currentMapController.dispose();
+          // positionStream!.cancel();
+          // currentMapController.dispose();
           Navigator.push(
               this.context,
               MaterialPageRoute(
