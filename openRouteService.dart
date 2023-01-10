@@ -35,20 +35,6 @@ class ORSCaller {
   }
 }
 
-Future getData() async {
-    http.Response response = await http.get(Uri.parse(
-        '$url$tripRoute?api_key=$apiKey&start=$longStart,$latStart&end=$longEnd,$latEnd'));
-    print(
-        '$url$tripRoute?api_key=$apiKey&start=$longStart,$latStart&end=$longEnd,$latEnd');
-    if (response.statusCode == 200) {
-      String data = response.body;
-      return jsonDecode(data);
-    } else {
-      print(response.statusCode);
-    }
-  }
-}
-
 Future getJsonData(ORSCaller orsCaller) async {
   directions.clear();
   nav_points.clear();
