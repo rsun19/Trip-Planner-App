@@ -1,5 +1,9 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
@@ -11,15 +15,165 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:trip_reminder/api-ORS/openRouteService.dart';
 import 'package:trip_reminder/ExpandedNavigationServices.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert'; //show json;
+import "package:firebase_core/firebase_core.dart";
 
-void main() {
-  runApp(MaterialApp(home: Home()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(MaterialApp(home: SignInScreen()));
 }
 
 enum RouteTaken { driving, walking, biking }
 
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  GoogleSignInAccount? _currentUser;
+  GoogleSignInAuthentication? googleAuth;
+  FirebaseAuth? firebaseUser;
+  String loginText = '';
+  GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  @override
+  void initState() {
+    _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) {
+      setState(() {
+        _currentUser = account;
+      });
+    });
+    _signInSilently();
+    super.initState();
+  }
+
+  void _signInSilently() async {
+    try {
+      await handleSignIn();
+    } catch (e) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        backgroundColor: Colors.lightBlue, body: buildLogInScreen());
+  }
+
+  Widget buildLogInScreen() {
+    final GoogleSignInAccount? user = _currentUser;
+    if (firebaseUser?.currentUser != null) {
+      return Home(
+        firebaseUser: firebaseUser,
+        googleSignIn: _googleSignIn,
+        currentUser: _currentUser,
+      );
+    } else {
+      return ConstrainedBox(
+          constraints: const BoxConstraints.expand(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Welcome to Trip Reminder',
+                style: TextStyle(fontSize: 30, color: Colors.white),
+              ),
+              SizedBox(height: 30),
+              Text(
+                'Manage, Find, and Navigate Trip Itineraries',
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
+              SizedBox(height: 30),
+              Container(
+                  color: Colors.green,
+                  child: TextButton(
+                      child: Text(
+                        'Google Log In',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onPressed: handleSignIn)),
+              SizedBox(height: 30),
+              Container(
+                  color: Colors.green,
+                  child: TextButton(
+                      child: Text(
+                        'Continue As Guest',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onPressed: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => Home()));
+                      })),
+            ],
+          ));
+    }
+  }
+
+  Future<void> handleSignIn() async {
+    try {
+      _currentUser = await _googleSignIn.signIn();
+      googleAuth = await _currentUser!.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth!.accessToken, idToken: googleAuth!.idToken);
+      firebaseUser = FirebaseAuth.instance;
+      await firebaseUser!.signInWithCredential(credential);
+      await checkIfNewUser();
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => Home(
+                    firebaseUser: firebaseUser,
+                    googleSignIn: _googleSignIn,
+                    currentUser: _currentUser,
+                  )));
+    } catch (e) {
+      loginText = 'Login failed';
+    }
+  }
+
+  Future<void> checkIfNewUser() async {
+    if (firebaseUser != null) {
+      final QuerySnapshot result = await FirebaseFirestore.instance
+          .collection('users')
+          .where('id', isEqualTo: firebaseUser!.currentUser!.uid)
+          .get();
+      final List<DocumentSnapshot> documents = result.docs;
+      print(documents[0].data());
+      List<DocumentSnapshot<Object?>> userData = [];
+      if (documents.isEmpty) {
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser!.currentUser!.uid)
+            .set({
+          'nickname': firebaseUser!.currentUser!.displayName,
+          'photoURL': firebaseUser!.currentUser!.photoURL,
+          'id': firebaseUser!.currentUser!.uid
+        });
+      }
+    }
+  }
+
+  Future<void> handleSignOut() async {
+    await FirebaseAuth.instance.signOut();
+    await _googleSignIn.disconnect();
+    await _googleSignIn.signOut();
+  }
+}
+
 class Home extends StatefulWidget {
-  const Home({super.key});
+  Home(
+      {super.key,
+      FirebaseAuth? firebaseUser,
+      GoogleSignIn? googleSignIn,
+      GoogleSignInAccount? currentUser});
+  FirebaseAuth? firebaseUser;
+  GoogleSignIn? googleSignIn;
+  GoogleSignInAccount? currentUser;
   @override
   State<Home> createState() => _HomeState();
 }
@@ -31,6 +185,8 @@ class _HomeState extends State<Home> {
   StreamSubscription<Position>? positionStream;
   StreamSubscription<Position>? positionStream1;
   Position? _position;
+  bool? locationLookUp;
+  bool? directionLookUp;
   final initialMapController = MapController();
   final currentMapController = MapController();
   @override
@@ -69,72 +225,59 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-        length: 2,
+        length: 3,
         child: Scaffold(
-          appBar: AppBar(
-              backgroundColor: Colors.lightBlue,
-              elevation: 0,
-              title: Text('Trip Planner',
-                  style: TextStyle(
-                    color: Colors.white,
-                    letterSpacing: 2.0,
-                  )),
-              actions: <Widget>[
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) {
-                      return const EventTripInfo();
-                    })).then((_) {
-                      sortList();
-                    });
-                  },
-                  icon: Icon(
-                    Icons.add,
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    'Add a Trip',
-                    style: TextStyle(
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ]),
           backgroundColor: Colors.blue,
           bottomNavigationBar: menu(),
           body: TabBarView(children: [
-            FutureBuilder<List<Trip>>(
-              future: sortList(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return ListView.builder(
-                      itemCount: snapshot.data!.length,
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                      itemBuilder: (context, index) {
-                        return Center(
-                            key: ObjectKey(Trip),
-                            child: TripRoute(
-                              trip: snapshot.data![index],
-                              onTap: () {
-                                compareTimes(snapshot.data![index].title,
-                                    snapshot.data![index].location);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          Profile(trip: snapshot.data![index])),
-                                );
-                              },
-                            ));
-                      });
-                } else {
-                  return CircularProgressIndicator();
-                }
-              },
-            ),
+            Stack(children: [
+              trip_list(),
+              Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    margin: EdgeInsets.fromLTRB(0, 0, 20, 20),
+                    padding: EdgeInsets.all(10),
+                    child: ElevatedButton.icon(
+                      style: ButtonStyle(
+                        backgroundColor:
+                            MaterialStateProperty.all<Color>(Colors.lightBlue),
+                        padding: MaterialStateProperty.all<EdgeInsets>(
+                            EdgeInsets.all(10)),
+                      ),
+                      onPressed: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return const EventTripInfo();
+                        })).then((_) {
+                          sortList();
+                        });
+                      },
+                      icon: Icon(
+                        Icons.add,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        'Add a Trip',
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ))
+            ]),
+            ViewProfile(),
             Column(children: [
+              Container(
+                  alignment: Alignment.topLeft,
+                  padding: EdgeInsets.fromLTRB(20, 50, 0, 0),
+                  child: Text(
+                    "Navigation",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                    ),
+                  )),
               Expanded(
                 child: Form(
                   key: _formKey,
@@ -242,12 +385,26 @@ class _HomeState extends State<Home> {
                                 await Geolocator.openLocationSettings();
                               }
                               await coordinates(tripName, tripLocation);
-                              await getJsonData(ORSCaller(
+                              directionLookUp = await getJsonData(ORSCaller(
                                   latStart: locationCoordinates[0],
                                   longStart: locationCoordinates[1],
                                   latEnd: locationCoordinates[2],
                                   longEnd: locationCoordinates[3],
                                   tripRoute: route));
+                              if (locationLookUp == false ||
+                                  directionLookUp == false) {
+                                await AlertDialog(
+                                    title: const Text(
+                                        'Inquiry failed. Location or directions may not exist'),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        child: const Text('Ok'),
+                                        onPressed: () {
+                                          setState(() {});
+                                        },
+                                      )
+                                    ]);
+                              }
                               points.add(LatLng(locationCoordinates[2],
                                   locationCoordinates[3]));
                               Position position =
@@ -257,23 +414,29 @@ class _HomeState extends State<Home> {
                                   LocationSettings(
                                 accuracy: LocationAccuracy.bestForNavigation,
                               );
-                              markers.add(Marker(
-                                point: LatLng(locationCoordinates[0],
-                                    locationCoordinates[1]),
-                                width: 80,
-                                height: 80,
-                                builder: (context) => Icon(Icons.location_pin),
-                              ));
-                              markers.add(
-                                Marker(
-                                  point: LatLng(locationCoordinates[2],
-                                      locationCoordinates[3]),
+                              try {
+                                markers.add(Marker(
+                                  point: LatLng(locationCoordinates[0],
+                                      locationCoordinates[1]),
                                   width: 80,
                                   height: 80,
                                   builder: (context) =>
                                       Icon(Icons.location_pin),
-                                ),
-                              );
+                                ));
+
+                                markers.add(
+                                  Marker(
+                                    point: LatLng(locationCoordinates[2],
+                                        locationCoordinates[3]),
+                                    width: 80,
+                                    height: 80,
+                                    builder: (context) =>
+                                        Icon(Icons.location_pin),
+                                  ),
+                                );
+                              } catch (e) {
+                                locationLookUp = false;
+                              }
                               just_started.value++;
                               positionStream = Geolocator.getPositionStream(
                                       locationSettings: locationSettings)
@@ -318,6 +481,209 @@ class _HomeState extends State<Home> {
             ]),
           ]),
         ));
+  }
+
+  Widget trip_list() {
+    if (sortedDates.isEmpty) {
+      return Column(children: [
+        Container(
+            alignment: Alignment.topLeft,
+            padding: EdgeInsets.fromLTRB(20, 50, 0, 0),
+            child: Text(
+              "Trips",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+              ),
+            )),
+        Container(
+            margin: EdgeInsets.symmetric(vertical: 40),
+            child: Text(
+              "Add a trip to get started",
+              style: TextStyle(
+                fontSize: 25,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ))
+      ]);
+    } else {
+      return Column(children: [
+        Container(
+            alignment: Alignment.topLeft,
+            padding: EdgeInsets.fromLTRB(20, 40, 0, 0),
+            child: Text(
+              "Trips",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+              ),
+            )),
+        FutureBuilder<List<Trip>>(
+          future: sortList(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return ListView.builder(
+                  itemCount: snapshot.data!.length,
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  itemBuilder: (context, index) {
+                    return Center(
+                        key: ObjectKey(Trip),
+                        child: TripRoute(
+                          trip: snapshot.data![index],
+                          onTap: () {
+                            compareTimes(snapshot.data![index].title,
+                                snapshot.data![index].location);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      Profile(trip: snapshot.data![index])),
+                            );
+                          },
+                        ));
+                  });
+            } else {
+              return CircularProgressIndicator();
+            }
+          },
+        )
+      ]);
+    }
+  }
+
+  Widget ViewProfile() {
+    // if (widget.firebaseUser == null) {
+    //   return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    //     Container(
+    //         padding: EdgeInsets.symmetric(vertical: 20),
+    //         child: Text(
+    //           "Please log in before accessing this page",
+    //           style: TextStyle(
+    //             fontSize: 20,
+    //             color: Colors.white,
+    //             fontWeight: FontWeight.bold,
+    //           ),
+    //         )),
+    //     TextButton(
+    //         style: ButtonStyle(
+    //           backgroundColor:
+    //               MaterialStateProperty.all<Color>(Colors.lightBlue),
+    //           padding:
+    //               MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(10)),
+    //         ),
+    //         onPressed: () {
+    //           Navigator.push(
+    //               context,
+    //               MaterialPageRoute(
+    //                 builder: (context) => const SignInScreen(),
+    //               ));
+    //         },
+    //         child: Text(
+    //           "Log in",
+    //           style: TextStyle(color: Colors.white),
+    //         )),
+    //   ]);
+    // } else {
+    return Container(
+        child: StreamBuilder(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .limit(1)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return CircularProgressIndicator();
+              } else {
+                return Container(
+                    padding: EdgeInsets.symmetric(vertical: 50, horizontal: 20),
+                    child: Column(
+                      children: [
+                        Container(
+                            alignment: Alignment.topLeft,
+                            child: Text(
+                              "Profile",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 30,
+                              ),
+                            )),
+                        Container(
+                            alignment: Alignment.topLeft,
+                            margin: EdgeInsets.symmetric(vertical: 10),
+                            child: Text('Search for all public iternaries',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 15))),
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
+                                  flex: 4,
+                                  child: TextField(
+                                    decoration: InputDecoration(
+                                        fillColor: Colors.white,
+                                        filled: true,
+                                        hintText:
+                                            'City, State or City, Country',
+                                        hintStyle:
+                                            TextStyle(color: Colors.black),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            borderSide: BorderSide.none)),
+                                  )),
+                              Spacer(),
+                              Expanded(
+                                  flex: 1,
+                                  child: TextButton.icon(
+                                      style: ButtonStyle(
+                                          backgroundColor:
+                                              MaterialStatePropertyAll(
+                                                  Colors.white),
+                                          padding: MaterialStateProperty.all<
+                                                  EdgeInsets>(
+                                              EdgeInsets.symmetric(
+                                                  vertical: 18)),
+                                          shape: MaterialStateProperty.all(
+                                              RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10)))),
+                                      onPressed: () {},
+                                      icon: Icon(Icons.search),
+                                      label: Text('')))
+                            ]),
+                        SizedBox(height: 20),
+                        CircleAvatar(
+                            radius: 50,
+                            backgroundImage: NetworkImage(
+                              // snapshot.data?.docs.toString() ??
+                              "https://www.shutterstock.com/image-vector/default-profile-picture-avatar-photo-260nw-1681253560.jpg",
+                              scale: 5,
+                            )),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Hi ${snapshot.data ?? 'User log-in failed.'}',
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
+                            )),
+                        TextButton(
+                            style: ButtonStyle(
+                              backgroundColor:
+                                  MaterialStateProperty.all<Color>(Colors.red),
+                            ),
+                            onPressed: handleSignOut,
+                            child: Text('Sign Out',
+                                style: TextStyle(color: Colors.white)))
+                      ],
+                    ));
+              }
+            }));
+    //}
   }
 
   Widget full_navigation_button() {
@@ -414,6 +780,48 @@ class _HomeState extends State<Home> {
       );
     }
   }
+
+  Future<void> coordinates(tripName, tripLocation) async {
+    try {
+      locationCoordinates.clear();
+      if (tripName.replaceAll(' ', '').toLowerCase() != 'currentlocation') {
+        await getJsonDataForCoordinates(CoordinatesHelper(area: tripName));
+        locationCoordinates.add(temp_locationCoordinates[0]);
+        locationCoordinates.add(temp_locationCoordinates[1]);
+      } else {
+        Geolocator.getCurrentPosition(
+                desiredAccuracy: LocationAccuracy.high,
+                forceAndroidLocationManager: true)
+            .then((Position position) {
+          locationCoordinates.add(position.latitude.toDouble());
+          locationCoordinates.add(position.longitude.toDouble());
+        }).catchError((e) {
+          locationLookUp = false;
+        });
+      }
+      temp_locationCoordinates.clear();
+      await getJsonDataForCoordinates(CoordinatesHelper(area: tripLocation));
+      points.clear();
+      points.add(LatLng(locationCoordinates[0], locationCoordinates[1]));
+      locationCoordinates.add(temp_locationCoordinates[0]);
+      locationCoordinates.add(temp_locationCoordinates[1]);
+      print(locationCoordinates);
+      locationLookUp = true;
+    } catch (e) {
+      locationLookUp = false;
+    }
+  }
+
+  Future<void> handleSignOut() async {
+    await FirebaseAuth.instance.signOut();
+    await widget.googleSignIn!.disconnect();
+    await widget.googleSignIn!.signOut();
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SignInScreen(),
+        ));
+  }
 }
 
 List<Marker> initialMarkers = [];
@@ -421,33 +829,6 @@ List<Marker> markers = [];
 List<LatLng> points = [];
 List<double> locationCoordinates = [];
 List<double> temp_locationCoordinates = [];
-
-Future<void> coordinates(tripName, tripLocation) async {
-  locationCoordinates.clear();
-  if (tripName.replaceAll(' ', '').toLowerCase() != 'currentlocation') {
-    await getJsonDataForCoordinates(CoordinatesHelper(area: tripName));
-    locationCoordinates.add(temp_locationCoordinates[0]);
-    locationCoordinates.add(temp_locationCoordinates[1]);
-  } else {
-    Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            forceAndroidLocationManager: true)
-        .then((Position position) {
-      locationCoordinates.add(position.latitude.toDouble());
-      locationCoordinates.add(position.longitude.toDouble());
-    }).catchError((e) {
-      print(e);
-      print('an error occured above');
-    });
-  }
-  temp_locationCoordinates.clear();
-  await getJsonDataForCoordinates(CoordinatesHelper(area: tripLocation));
-  points.clear();
-  points.add(LatLng(locationCoordinates[0], locationCoordinates[1]));
-  locationCoordinates.add(temp_locationCoordinates[0]);
-  locationCoordinates.add(temp_locationCoordinates[1]);
-  print(locationCoordinates);
-}
 
 Widget menu() {
   return Container(
@@ -458,6 +839,7 @@ Widget menu() {
         indicatorPadding: EdgeInsets.all(5),
         tabs: [
           Tab(text: "Home", icon: Icon(Icons.home)),
+          Tab(text: "Search", icon: Icon(Icons.search)),
           Tab(text: "Navigation", icon: Icon(Icons.navigation))
         ],
       ));
