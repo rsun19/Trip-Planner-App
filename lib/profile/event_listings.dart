@@ -311,7 +311,7 @@ class _eventInfoState extends State<eventInfo> {
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: Colors.black),
+                border: Border.all(color: Colors.white),
                 borderRadius: BorderRadius.all(Radius.circular(15))),
             child: Row(children: <Widget>[
               Container(

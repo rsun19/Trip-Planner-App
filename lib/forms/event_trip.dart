@@ -68,7 +68,8 @@ class _EventTripInfoState extends State<EventTripInfo> {
                       controller: _locationinput,
                       decoration: const InputDecoration(
                         border: UnderlineInputBorder(),
-                        labelText: "Where are you traveling?",
+                        labelText:
+                            "Where are you traveling? Input City, State or City, Country.",
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {

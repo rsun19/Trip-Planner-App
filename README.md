@@ -1,6 +1,6 @@
 # Trip-Planner-App
 
-Trip Planner is a Flutter-made app that is designed to help plan your vacations. This app uses the Open Street Maps tile server and Open Route Service API, which allows for direction-based navigation.
+Trip Planner is a Flutter-made app that is designed to help plan your vacations. This app uses the Open Street Maps tile server and Open Route Service API, which allows for direction-based navigation. As of now, Google login is integrated.
 
 ## Development
 
@@ -11,7 +11,7 @@ All Flutter plugins used are located in the pubspec.yaml file.
 
 ## To-Do list
 
-- Finish Firebase Integration and fix Google login services.
+- Finish Firebase Integration with real-time Database and Storage.
 
 - Create a space where everyone could share trip itineraries.
 

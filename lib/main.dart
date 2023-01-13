@@ -28,8 +28,8 @@ void main() async {
 enum RouteTaken { driving, walking, biking }
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
-
+  SignInScreen({super.key, this.googleSignIn});
+  GoogleSignIn? googleSignIn;
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
@@ -39,11 +39,14 @@ class _SignInScreenState extends State<SignInScreen> {
   GoogleSignInAuthentication? googleAuth;
   FirebaseAuth? firebaseUser;
   String loginText = '';
-  GoogleSignIn _googleSignIn = GoogleSignIn();
 
   @override
   void initState() {
-    _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) {
+    if (widget.googleSignIn == null) {
+      widget.googleSignIn = GoogleSignIn();
+    }
+    widget.googleSignIn!.onCurrentUserChanged
+        .listen((GoogleSignInAccount? account) {
       setState(() {
         _currentUser = account;
       });
@@ -65,61 +68,61 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget buildLogInScreen() {
-    final GoogleSignInAccount? user = _currentUser;
-    if (firebaseUser?.currentUser != null) {
-      return Home(
-        firebaseUser: firebaseUser,
-        googleSignIn: _googleSignIn,
-        currentUser: _currentUser,
-      );
-    } else {
-      return ConstrainedBox(
-          constraints: const BoxConstraints.expand(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Welcome to Trip Reminder',
-                style: TextStyle(fontSize: 30, color: Colors.white),
-              ),
-              SizedBox(height: 30),
-              Text(
-                'Manage, Find, and Navigate Trip Itineraries',
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
-              SizedBox(height: 30),
-              Container(
-                  color: Colors.green,
-                  child: TextButton(
-                      child: Text(
-                        'Google Log In',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onPressed: handleSignIn)),
-              SizedBox(height: 30),
-              Container(
-                  color: Colors.green,
-                  child: TextButton(
-                      child: Text(
-                        'Continue As Guest',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onPressed: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) => Home()));
-                      })),
-            ],
-          ));
-    }
+    // if (firebaseUser!.currentUser != null) {
+    //   return Home(
+    //     firebaseUser: firebaseUser,
+    //     googleSignIn: _googleSignIn,
+    //     currentUser: _currentUser,
+    //   );
+    // } else {
+    return ConstrainedBox(
+        constraints: const BoxConstraints.expand(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Welcome to Trip Reminder',
+              style: TextStyle(fontSize: 30, color: Colors.white),
+            ),
+            SizedBox(height: 30),
+            Text(
+              'Manage, Find, and Navigate Trip Itineraries',
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
+            SizedBox(height: 30),
+            Container(
+                color: Colors.green,
+                child: TextButton(
+                    child: Text(
+                      'Google Log In',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onPressed: handleSignIn)),
+            SizedBox(height: 30),
+            Container(
+                color: Colors.green,
+                child: TextButton(
+                    child: Text(
+                      'Continue As Guest',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onPressed: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => Home()));
+                    })),
+          ],
+        ));
+    //}
   }
 
   Future<void> handleSignIn() async {
     try {
-      _currentUser = await _googleSignIn.signIn();
+      _currentUser = await widget.googleSignIn!.signIn();
       googleAuth = await _currentUser!.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
           accessToken: googleAuth!.accessToken, idToken: googleAuth!.idToken);
+      print(_currentUser!.email);
       firebaseUser = FirebaseAuth.instance;
       await firebaseUser!.signInWithCredential(credential);
       await checkIfNewUser();
@@ -128,7 +131,7 @@ class _SignInScreenState extends State<SignInScreen> {
           MaterialPageRoute(
               builder: (context) => Home(
                     firebaseUser: firebaseUser,
-                    googleSignIn: _googleSignIn,
+                    googleSignIn: widget.googleSignIn,
                     currentUser: _currentUser,
                   )));
     } catch (e) {
@@ -143,9 +146,8 @@ class _SignInScreenState extends State<SignInScreen> {
           .where('id', isEqualTo: firebaseUser!.currentUser!.uid)
           .get();
       final List<DocumentSnapshot> documents = result.docs;
-      print(documents[0].data());
-      List<DocumentSnapshot<Object?>> userData = [];
-      if (documents.isEmpty) {
+      print(documents);
+      if (documents.length == 0) {
         FirebaseFirestore.instance
             .collection('users')
             .doc(firebaseUser!.currentUser!.uid)
@@ -160,17 +162,15 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> handleSignOut() async {
     await FirebaseAuth.instance.signOut();
-    await _googleSignIn.disconnect();
-    await _googleSignIn.signOut();
+    await widget.googleSignIn!.disconnect();
+    await widget.googleSignIn!.signOut();
   }
 }
 
+List<DocumentSnapshot<Object?>> userData = [];
+
 class Home extends StatefulWidget {
-  Home(
-      {super.key,
-      FirebaseAuth? firebaseUser,
-      GoogleSignIn? googleSignIn,
-      GoogleSignInAccount? currentUser});
+  Home({super.key, this.firebaseUser, this.googleSignIn, this.currentUser});
   FirebaseAuth? firebaseUser;
   GoogleSignIn? googleSignIn;
   GoogleSignInAccount? currentUser;
@@ -488,7 +488,7 @@ class _HomeState extends State<Home> {
       return Column(children: [
         Container(
             alignment: Alignment.topLeft,
-            padding: EdgeInsets.fromLTRB(20, 50, 0, 0),
+            padding: EdgeInsets.fromLTRB(20, 60, 0, 0),
             child: Text(
               "Trips",
               style: TextStyle(
@@ -524,6 +524,7 @@ class _HomeState extends State<Home> {
           builder: (context, snapshot) {
             if (snapshot.hasData) {
               return ListView.builder(
+                  key: ObjectKey(Trip),
                   itemCount: snapshot.data!.length,
                   shrinkWrap: true,
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -554,136 +555,140 @@ class _HomeState extends State<Home> {
   }
 
   Widget ViewProfile() {
-    // if (widget.firebaseUser == null) {
-    //   return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    //     Container(
-    //         padding: EdgeInsets.symmetric(vertical: 20),
-    //         child: Text(
-    //           "Please log in before accessing this page",
-    //           style: TextStyle(
-    //             fontSize: 20,
-    //             color: Colors.white,
-    //             fontWeight: FontWeight.bold,
-    //           ),
-    //         )),
-    //     TextButton(
-    //         style: ButtonStyle(
-    //           backgroundColor:
-    //               MaterialStateProperty.all<Color>(Colors.lightBlue),
-    //           padding:
-    //               MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(10)),
-    //         ),
-    //         onPressed: () {
-    //           Navigator.push(
-    //               context,
-    //               MaterialPageRoute(
-    //                 builder: (context) => const SignInScreen(),
-    //               ));
-    //         },
-    //         child: Text(
-    //           "Log in",
-    //           style: TextStyle(color: Colors.white),
-    //         )),
-    //   ]);
-    // } else {
-    return Container(
-        child: StreamBuilder(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .limit(1)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return CircularProgressIndicator();
-              } else {
-                return Container(
-                    padding: EdgeInsets.symmetric(vertical: 50, horizontal: 20),
-                    child: Column(
-                      children: [
-                        Container(
-                            alignment: Alignment.topLeft,
-                            child: Text(
-                              "Profile",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 30,
-                              ),
-                            )),
-                        Container(
-                            alignment: Alignment.topLeft,
-                            margin: EdgeInsets.symmetric(vertical: 10),
-                            child: Text('Search for all public iternaries',
+    if (widget.currentUser == null) {
+      return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              "Please log in before accessing this page",
+              style: TextStyle(
+                fontSize: 20,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            )),
+        TextButton(
+            style: ButtonStyle(
+              backgroundColor:
+                  MaterialStateProperty.all<Color>(Colors.lightBlue),
+              padding:
+                  MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(10)),
+            ),
+            onPressed: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SignInScreen(),
+                  ));
+            },
+            child: Text(
+              "Log in",
+              style: TextStyle(color: Colors.white),
+            )),
+      ]);
+    } else {
+      return Container(
+          child: StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .limit(1)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return CircularProgressIndicator();
+                } else {
+                  return Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 50, horizontal: 20),
+                      child: Column(
+                        children: [
+                          Container(
+                              alignment: Alignment.topLeft,
+                              child: Text(
+                                "Profile",
                                 style: TextStyle(
-                                    color: Colors.white, fontSize: 15))),
-                        Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                  flex: 4,
-                                  child: TextField(
-                                    decoration: InputDecoration(
-                                        fillColor: Colors.white,
-                                        filled: true,
-                                        hintText:
-                                            'City, State or City, Country',
-                                        hintStyle:
-                                            TextStyle(color: Colors.black),
-                                        border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            borderSide: BorderSide.none)),
-                                  )),
-                              Spacer(),
-                              Expanded(
-                                  flex: 1,
-                                  child: TextButton.icon(
-                                      style: ButtonStyle(
-                                          backgroundColor:
-                                              MaterialStatePropertyAll(
-                                                  Colors.white),
-                                          padding: MaterialStateProperty.all<
-                                                  EdgeInsets>(
-                                              EdgeInsets.symmetric(
-                                                  vertical: 18)),
-                                          shape: MaterialStateProperty.all(
-                                              RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10)))),
-                                      onPressed: () {},
-                                      icon: Icon(Icons.search),
-                                      label: Text('')))
-                            ]),
-                        SizedBox(height: 20),
-                        CircleAvatar(
-                            radius: 50,
-                            backgroundImage: NetworkImage(
-                              // snapshot.data?.docs.toString() ??
-                              "https://www.shutterstock.com/image-vector/default-profile-picture-avatar-photo-260nw-1681253560.jpg",
-                              scale: 5,
-                            )),
-                        SizedBox(
-                          height: 10,
-                        ),
-                        Container(
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Hi ${snapshot.data ?? 'User log-in failed.'}',
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                            )),
-                        TextButton(
-                            style: ButtonStyle(
-                              backgroundColor:
-                                  MaterialStateProperty.all<Color>(Colors.red),
-                            ),
-                            onPressed: handleSignOut,
-                            child: Text('Sign Out',
-                                style: TextStyle(color: Colors.white)))
-                      ],
-                    ));
-              }
-            }));
-    //}
+                                  color: Colors.white,
+                                  fontSize: 30,
+                                ),
+                              )),
+                          Container(
+                              alignment: Alignment.topLeft,
+                              margin: EdgeInsets.symmetric(vertical: 10),
+                              child: Text('Search for all public iternaries',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 15))),
+                          Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Expanded(
+                                    flex: 4,
+                                    child: TextField(
+                                      decoration: InputDecoration(
+                                          fillColor: Colors.white,
+                                          filled: true,
+                                          hintText:
+                                              'City, State or City, Country',
+                                          hintStyle:
+                                              TextStyle(color: Colors.black),
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              borderSide: BorderSide.none)),
+                                    )),
+                                Spacer(),
+                                Expanded(
+                                    flex: 1,
+                                    child: TextButton.icon(
+                                        style: ButtonStyle(
+                                            backgroundColor:
+                                                MaterialStatePropertyAll(
+                                                    Colors.white),
+                                            padding: MaterialStateProperty.all<
+                                                    EdgeInsets>(
+                                                EdgeInsets.symmetric(
+                                                    vertical: 18)),
+                                            shape: MaterialStateProperty.all(
+                                                RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(10)))),
+                                        onPressed: () {},
+                                        icon: Icon(Icons.search),
+                                        label: Text('')))
+                              ]),
+                          SizedBox(height: 20),
+                          CircleAvatar(
+                              radius: 50,
+                              backgroundImage: NetworkImage(
+                                FirebaseAuth.instance.currentUser!.photoURL ??
+                                    "https://www.shutterstock.com/image-vector/default-profile-picture-avatar-photo-260nw-1681253560.jpg",
+                                scale: 5,
+                              )),
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Container(
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Hi ${FirebaseAuth.instance.currentUser?.displayName ?? 'User log-in failed.'}',
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                              )),
+                          TextButton(
+                              style: ButtonStyle(
+                                backgroundColor:
+                                    MaterialStateProperty.all<Color>(
+                                        Colors.red),
+                              ),
+                              onPressed: handleSignOut,
+                              child: Text('Sign Out',
+                                  style: TextStyle(color: Colors.white)))
+                        ],
+                      ));
+                }
+              }));
+    }
   }
 
   Widget full_navigation_button() {
@@ -814,8 +819,8 @@ class _HomeState extends State<Home> {
 
   Future<void> handleSignOut() async {
     await FirebaseAuth.instance.signOut();
-    await widget.googleSignIn!.disconnect();
-    await widget.googleSignIn!.signOut();
+    await widget.googleSignIn?.disconnect();
+    await widget.googleSignIn?.signOut();
     Navigator.push(
         context,
         MaterialPageRoute(
@@ -922,40 +927,53 @@ class _TripRouteState extends State<TripRoute> {
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: Colors.black),
+                border: Border.all(color: Colors.white),
                 borderRadius: BorderRadius.all(Radius.circular(15))),
-            child: Row(
-              children: <Widget>[
-                Container(
-                    child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      child: Text('Name: ${widget.trip.title}'),
-                    ),
-                    SizedBox(height: 20),
-                    Container(
-                      child: Text('Location: ${widget.trip.location}'),
-                    ),
-                    SizedBox(height: 20),
-                    Container(child: dateChecker()),
-                  ],
-                )),
-                Spacer(),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black),
-                    borderRadius: BorderRadius.all(Radius.circular(15)),
+            child: Row(children: <Widget>[
+              Container(
+                  child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    child: Text('Name: ${widget.trip.title}'),
                   ),
-                  child: TextButton.icon(
-                      onPressed: () {
-                        _alertBuilder(context, widget.trip);
-                      },
-                      icon: Icon(Icons.delete),
-                      label: Text('Delete')),
-                ),
-              ],
-            )));
+                  SizedBox(height: 20),
+                  Container(
+                    child: Text('Location: ${widget.trip.location}'),
+                  ),
+                  SizedBox(height: 20),
+                  Container(child: dateChecker()),
+                ],
+              )),
+              Spacer(),
+              Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black),
+                      borderRadius: BorderRadius.all(Radius.circular(15)),
+                    ),
+                    child: TextButton.icon(
+                        onPressed: () {},
+                        icon: Icon(Icons.visibility),
+                        label: Text('Public')),
+                  ),
+                  SizedBox(height: 5),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black),
+                      borderRadius: BorderRadius.all(Radius.circular(15)),
+                    ),
+                    child: TextButton.icon(
+                        onPressed: () {
+                          _alertBuilder(context, widget.trip);
+                        },
+                        icon: Icon(Icons.delete),
+                        label: Text('Delete')),
+                  ),
+                ],
+              )
+            ])));
   }
 
   Widget dateChecker() {
