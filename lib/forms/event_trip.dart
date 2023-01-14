@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/database/user_info.dart';
+import 'package:trip_reminder/main.dart';
 
 class EventTripInfo extends StatefulWidget {
   const EventTripInfo({super.key});
@@ -85,7 +86,8 @@ class _EventTripInfoState extends State<EventTripInfo> {
                         final String tripName = _controller.text;
                         final String tripLocation = _locationinput.text;
                         _insert(tripName, tripLocation);
-                        Navigator.pop(context);
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => Home()));
                       }
                     },
                     child: const Text('Submit'))
@@ -104,6 +106,8 @@ class _EventTripInfoState extends State<EventTripInfo> {
       UserDatabase.columnTripLocation: tripLocation,
       UserDatabase.columnTripStartDate: startDate,
       UserDatabase.columnTripEndDate: endDate,
+      UserDatabase.visibility: "Private",
+      UserDatabase.email: "None"
     };
     int id = await db.insert(UserDatabase.table2, row);
     print(await db.query(UserDatabase.table2));

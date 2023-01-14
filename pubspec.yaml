@@ -46,11 +46,6 @@ dependencies:
   flutter_compass: ^0.7.0
   firebase_auth: ^4.2.5
   google_sign_in: ^5.4.2
-  firebase_storage: ^11.0.10
-  fluttertoast: ^8.1.2
-  shared_preferences: ^2.0.15
-  image_picker: ^0.8.6
-  cached_network_image: ^3.2.3
   cloud_firestore: ^4.3.1
   geolocator: ^9.0.2
   firebase_core: ^2.4.1

@@ -13,6 +13,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:maps_launcher/maps_launcher.dart';
 import 'package:trip_reminder/api-ORS/openRouteService.dart';
 import 'package:trip_reminder/main.dart';
+import 'package:trip_reminder/forms/changeItinerary.dart';
 
 class tripEvent {
   const tripEvent(
@@ -77,12 +78,12 @@ class _ProfileState extends State<Profile> {
   Position? _position;
   StreamSubscription<Position>? positionStream;
   ValueNotifier<int> just_started = ValueNotifier(0);
-  MapController mapController = MapController();
 
   @override
   void initState() {
     eventParser();
     just_started.value++;
+    //sortedList();
     super.initState();
   }
 
@@ -91,76 +92,137 @@ class _ProfileState extends State<Profile> {
     return DefaultTabController(
         length: 2,
         child: Scaffold(
-            appBar: AppBar(
-              elevation: 0,
-              title: Text(
-                '${widget.trip.title}',
-                style: TextStyle(
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                ),
+          appBar: AppBar(
+            elevation: 0,
+            title: Text(
+              '${widget.trip.title}',
+              style: TextStyle(
+                color: Colors.white,
+                letterSpacing: 2.0,
               ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) {
-                      return UserFormCase(trip: widget.trip);
-                    }));
-                  },
-                  child: Text(
-                    'Add More Events',
-                    style: TextStyle(
-                      color: Colors.white,
-                      letterSpacing: 2,
-                    ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) {
+                    return UserFormCase(trip: widget.trip);
+                  }));
+                },
+                child: Text(
+                  'Add More Events',
+                  style: TextStyle(
+                    color: Colors.white,
+                    letterSpacing: 2,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          backgroundColor: Colors.lightBlue,
+          bottomNavigationBar: eventMenu(),
+          body: TabBarView(children: [
+            SizedBox(
+                height: 1000,
+                width: 1000,
+                child: FutureBuilder<List<tripEvent>>(
+                    future: sortedList(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return ListView.builder(
+                            key: ObjectKey(tripEvent),
+                            itemCount: snapshot.data!.length,
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                            itemBuilder: (context, index) {
+                              return Center(
+                                child: eventInfo(
+                                  tripevent: snapshot.data![index],
+                                  trip: widget.trip,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => EventView(
+                                              trip: widget.trip,
+                                              tripevent:
+                                                  snapshot.data![index])),
+                                    );
+                                  },
+                                ),
+                              );
+                            });
+                      } else {
+                        return CircularProgressIndicator();
+                      }
+                    })),
+            ValueListenableBuilder(
+                valueListenable: just_started,
+                builder: ((context, value, widget) {
+                  return flutter_osm_map_big();
+                }))
+          ]),
+          floatingActionButton: TextButton(
+            style: ButtonStyle(
+              backgroundColor: MaterialStateProperty.all<Color>(Colors.red),
+              padding:
+                  MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(10)),
             ),
-            backgroundColor: Colors.lightBlue,
-            bottomNavigationBar: eventMenu(),
-            body: TabBarView(children: [
-              SizedBox(
-                  height: 1000,
-                  width: 1000,
-                  child: FutureBuilder<List<tripEvent>>(
-                      future: sortedList(),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          return ListView.builder(
-                              itemCount: snapshot.data!.length,
-                              shrinkWrap: true,
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                              itemBuilder: (context, index) {
-                                return Center(
-                                  key: ObjectKey(tripEvent),
-                                  child: eventInfo(
-                                    tripevent: snapshot.data![index],
-                                    trip: widget.trip,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => EventView(
-                                                trip: widget.trip,
-                                                tripevent:
-                                                    snapshot.data![index])),
-                                      );
-                                    },
-                                  ),
-                                );
-                              });
-                        } else {
-                          return CircularProgressIndicator();
-                        }
-                      })),
-              ValueListenableBuilder(
-                  valueListenable: just_started,
-                  builder: ((context, value, widget) {
-                    return flutter_osm_map_big();
-                  }))
-            ])));
+            child: Text(
+              'Change itinerary name or location',
+              style: TextStyle(color: Colors.white),
+            ),
+            onPressed: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChangeTripName(trip: widget.trip),
+                  ));
+            },
+          ),
+        ));
+  }
+
+  Future<List<tripEvent>> sortedList() async {
+    String currentDay =
+        DateTime.now().toIso8601String().split('T')[0].toString() +
+            'T00:00:00.000';
+    eventSortedDates.clear();
+    eventPassedDates.clear();
+    Database db = await UserDatabase.instance.database;
+    int count =
+        Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM users'))
+                ?.toInt() ??
+            0;
+    for (int i = 1; i <= count; i++) {
+      final maps =
+          await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
+      if (maps[0]['tripNameEvent'] == widget.trip.title &&
+          maps[0]["tripLocationEvent"] == widget.trip.location) {
+        eventSortedDates.add(tripEvent(
+            name: maps[0]['name'].toString(),
+            description: maps[0]['description'].toString(),
+            dateTime: maps[0]['dateTime'].toString(),
+            location: maps[0]['location'].toString(),
+            fullAddress: maps[0]['fullAddress'].toString()));
+      }
+    }
+    eventSortedDates.sort((a, b) {
+      return a.dateTime.compareTo(b.dateTime);
+    });
+    for (var each in eventSortedDates) {
+      if (each.dateTime.compareTo(currentDay) < 1) {
+        eventPassedDates.add(each);
+      }
+    }
+    List<tripEvent> sentEvents = [];
+    eventSortedDates.removeWhere((e) => eventPassedDates.contains(e));
+    for (var each in eventPassedDates) {
+      eventSortedDates.add(each);
+    }
+    for (var each in eventSortedDates) {
+      sentEvents.add(each);
+    }
+    return sentEvents;
   }
 
   Widget eventMenu() {
@@ -182,14 +244,12 @@ class _ProfileState extends State<Profile> {
       return Center(child: Text("Please enter some events"));
     } else {
       return FlutterMap(
-        mapController: mapController,
         options: MapOptions(
           center: LatLng(_position!.latitude, _position!.longitude),
           zoom: 13.0,
           maxZoom: 19.0,
           keepAlive: true,
           onMapReady: () {
-            //eventParser();
             final LocationSettings locationSettings = LocationSettings(
               accuracy: LocationAccuracy.bestForNavigation,
             );
@@ -208,8 +268,6 @@ class _ProfileState extends State<Profile> {
                       builder: ((context) => Icon(Icons.circle)),
                     ),
                   );
-                  mapController.move(
-                      LatLng(position.latitude, position.longitude), 16);
                 });
               }
             });
@@ -448,127 +506,88 @@ class _EventViewState extends State<EventView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          title: Text(
-            '${widget.tripevent.name}',
-            style: TextStyle(
-              color: Colors.white,
-              letterSpacing: 2.0,
-            ),
+      appBar: AppBar(
+        elevation: 0,
+        title: Text(
+          '${widget.tripevent.name}',
+          style: TextStyle(
+            color: Colors.white,
+            letterSpacing: 2.0,
           ),
         ),
-        body: Center(
-          child: Container(
-            height: 700,
-            width: 300,
-            margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.black),
-                borderRadius: BorderRadius.all(Radius.circular(15))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  child: Text(
-                    'Name: ${widget.tripevent.name}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      letterSpacing: .5,
-                    ),
+      ),
+      body: Center(
+        child: Container(
+          height: 700,
+          width: 300,
+          margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.black),
+              borderRadius: BorderRadius.all(Radius.circular(15))),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                child: Text(
+                  'Name: ${widget.tripevent.name}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    letterSpacing: .5,
                   ),
                 ),
-                SizedBox(height: 20),
-                Container(
-                  child: Text(
-                    'Date: ${date}' + ' at ' + '${time}',
-                    style: TextStyle(
-                        //fontSize: 20,
-                        //letterSpacing: .5,
-                        ),
-                  ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                child: Text(
+                  'Date: ${date}' + ' at ' + '${time}',
+                  style: TextStyle(
+                      //fontSize: 20,
+                      //letterSpacing: .5,
+                      ),
                 ),
-                SizedBox(height: 20),
-                Container(
-                  child: Text(
-                    'Location: ${widget.tripevent.fullAddress}',
-                    style: TextStyle(
-                        //fontSize: 20,
-                        //letterSpacing: .5,
-                        ),
-                  ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                child: Text(
+                  'Location: ${widget.tripevent.fullAddress}',
+                  style: TextStyle(
+                      //fontSize: 20,
+                      //letterSpacing: .5,
+                      ),
                 ),
-                SizedBox(height: 20),
-                Container(
-                  child: Text(
-                    'Description: ${widget.tripevent.description}',
-                    style: TextStyle(
-                        //fontSize: 20,
-                        //letterSpacing: .5,
-                        ),
-                  ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                child: Text(
+                  'Description: ${widget.tripevent.description}',
+                  style: TextStyle(
+                      //fontSize: 20,
+                      //letterSpacing: .5,
+                      ),
                 ),
-                Spacer(),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black),
-                    borderRadius: BorderRadius.all(Radius.circular(15)),
-                  ),
-                  child: TextButton.icon(
-                      onPressed: () {
-                        _alertBuilder(context, widget.trip, widget.tripevent);
-                        setState(() {});
-                      },
-                      icon: Icon(Icons.delete),
-                      label: Text('Delete')),
+              ),
+              Spacer(),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black),
+                  borderRadius: BorderRadius.all(Radius.circular(15)),
                 ),
-              ],
-            ),
+                child: TextButton.icon(
+                    onPressed: () {
+                      _alertBuilder(context, widget.trip, widget.tripevent);
+                      setState(() {});
+                    },
+                    icon: Icon(Icons.delete),
+                    label: Text('Delete')),
+              ),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
   }
-}
-
-Future<List<tripEvent>> sortedList() async {
-  String currentDay =
-      DateTime.now().toIso8601String().split('T')[0].toString() +
-          'T00:00:00.000';
-  eventSortedDates.clear();
-  eventPassedDates.clear();
-  Database db = await UserDatabase.instance.database;
-  int count =
-      Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM users'))
-              ?.toInt() ??
-          0;
-  for (int i = 1; i <= count; i++) {
-    final maps =
-        await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
-    eventSortedDates.add(tripEvent(
-        name: maps[0]['name'].toString(),
-        description: maps[0]['description'].toString(),
-        dateTime: maps[0]['dateTime'].toString(),
-        location: maps[0]['location'].toString(),
-        fullAddress: maps[0]['fullAddress'].toString()));
-  }
-  eventSortedDates.sort((a, b) {
-    return a.dateTime.compareTo(b.dateTime);
-  });
-  for (var each in eventSortedDates) {
-    if (each.dateTime.compareTo(currentDay) < 1) {
-      eventPassedDates.add(each);
-    }
-  }
-  List<tripEvent> sentEvents = [];
-  eventSortedDates.removeWhere((e) => eventPassedDates.contains(e));
-  for (var each in eventPassedDates) {
-    eventSortedDates.add(each);
-  }
-  for (var each in eventSortedDates) {
-    sentEvents.add(each);
-  }
-  return sentEvents;
 }
 
 List<tripEvent> eventSortedDates = [];
@@ -677,7 +696,6 @@ Future<void> _alertBuilder(
                   tripevent.description.toString(),
                   tripevent.dateTime.toString(),
                   tripevent.fullAddress.toString());
-              sortedList();
               compareTimes(trip.title.toString(), trip.location.toString());
               Navigator.push(
                   context,

@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:trip_reminder/SearchResults.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
 import 'package:trip_reminder/forms/event_form.dart';
@@ -18,6 +18,8 @@ import 'package:trip_reminder/ExpandedNavigationServices.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; //show json;
 import "package:firebase_core/firebase_core.dart";
+import 'package:trip_reminder/SearchResults.dart';
+import 'package:trip_reminder/globals.dart' as globals;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   void initState() {
+    globals.currentUser = null;
+    globals.googleSignIn = null;
+    globals.firebaseUser = null;
     if (widget.googleSignIn == null) {
       widget.googleSignIn = GoogleSignIn();
     }
@@ -49,6 +54,7 @@ class _SignInScreenState extends State<SignInScreen> {
         .listen((GoogleSignInAccount? account) {
       setState(() {
         _currentUser = account;
+        globals.currentUser = account;
       });
     });
     _signInSilently();
@@ -68,13 +74,6 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget buildLogInScreen() {
-    // if (firebaseUser!.currentUser != null) {
-    //   return Home(
-    //     firebaseUser: firebaseUser,
-    //     googleSignIn: _googleSignIn,
-    //     currentUser: _currentUser,
-    //   );
-    // } else {
     return ConstrainedBox(
         constraints: const BoxConstraints.expand(),
         child: Column(
@@ -122,10 +121,12 @@ class _SignInScreenState extends State<SignInScreen> {
       googleAuth = await _currentUser!.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
           accessToken: googleAuth!.accessToken, idToken: googleAuth!.idToken);
-      print(_currentUser!.email);
       firebaseUser = FirebaseAuth.instance;
       await firebaseUser!.signInWithCredential(credential);
       await checkIfNewUser();
+      globals.currentUser = _currentUser;
+      globals.firebaseUser = firebaseUser;
+      globals.googleSignIn = widget.googleSignIn;
       Navigator.push(
           context,
           MaterialPageRoute(
@@ -159,12 +160,6 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     }
   }
-
-  Future<void> handleSignOut() async {
-    await FirebaseAuth.instance.signOut();
-    await widget.googleSignIn!.disconnect();
-    await widget.googleSignIn!.signOut();
-  }
 }
 
 List<DocumentSnapshot<Object?>> userData = [];
@@ -189,12 +184,21 @@ class _HomeState extends State<Home> {
   bool? directionLookUp;
   final initialMapController = MapController();
   final currentMapController = MapController();
+  Future<List<Trip>>? _sortList;
   @override
   void initState() {
+    sortedList_();
     _controller.text = "current location";
     just_started.value = 0;
+    widget.firebaseUser = globals.firebaseUser;
+    widget.currentUser = globals.currentUser;
+    widget.googleSignIn = globals.googleSignIn;
     loadingLocation();
     super.initState();
+  }
+
+  void sortedList_() async {
+    _sortList = sortList();
   }
 
   void loadingLocation() async {
@@ -220,6 +224,7 @@ class _HomeState extends State<Home> {
     }
   }
 
+  final TextEditingController _searchQuery = TextEditingController();
   final TextEditingController _locationinput = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   @override
@@ -484,74 +489,52 @@ class _HomeState extends State<Home> {
   }
 
   Widget trip_list() {
-    if (sortedDates.isEmpty) {
-      return Column(children: [
-        Container(
-            alignment: Alignment.topLeft,
-            padding: EdgeInsets.fromLTRB(20, 60, 0, 0),
-            child: Text(
-              "Trips",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-              ),
-            )),
-        Container(
-            margin: EdgeInsets.symmetric(vertical: 40),
-            child: Text(
-              "Add a trip to get started",
-              style: TextStyle(
-                fontSize: 25,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ))
-      ]);
-    } else {
-      return Column(children: [
-        Container(
-            alignment: Alignment.topLeft,
-            padding: EdgeInsets.fromLTRB(20, 40, 0, 0),
-            child: Text(
-              "Trips",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-              ),
-            )),
-        FutureBuilder<List<Trip>>(
-          future: sortList(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return ListView.builder(
-                  key: ObjectKey(Trip),
-                  itemCount: snapshot.data!.length,
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                  itemBuilder: (context, index) {
-                    return Center(
-                        key: ObjectKey(Trip),
-                        child: TripRoute(
-                          trip: snapshot.data![index],
-                          onTap: () {
-                            compareTimes(snapshot.data![index].title,
-                                snapshot.data![index].location);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      Profile(trip: snapshot.data![index])),
-                            );
-                          },
-                        ));
-                  });
-            } else {
-              return CircularProgressIndicator();
-            }
-          },
-        )
-      ]);
-    }
+    return Column(children: [
+      Container(
+          alignment: Alignment.topLeft,
+          padding: EdgeInsets.fromLTRB(20, 40, 0, 0),
+          child: Text(
+            "Trips",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+            ),
+          )),
+      FutureBuilder<List<Trip>>(
+        future: _sortList,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return ListView.builder(
+                key: ObjectKey(Trip),
+                itemCount: snapshot.data!.length,
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                itemBuilder: (context, index) {
+                  return Center(
+                      key: ObjectKey(Trip),
+                      child: TripRoute(
+                        trip: snapshot.data![index],
+                        firebaseUser: widget.firebaseUser,
+                        onTap: () {
+                          compareTimes(snapshot.data![index].title,
+                              snapshot.data![index].location);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    Profile(trip: snapshot.data![index])),
+                          );
+                        },
+                      ));
+                });
+          } else {
+            return CircularProgressIndicator(
+              backgroundColor: Colors.white,
+            );
+          }
+        },
+      )
+    ]);
   }
 
   Widget ViewProfile() {
@@ -614,7 +597,7 @@ class _HomeState extends State<Home> {
                           Container(
                               alignment: Alignment.topLeft,
                               margin: EdgeInsets.symmetric(vertical: 10),
-                              child: Text('Search for all public iternaries',
+                              child: Text('Search for all public itineraries',
                                   style: TextStyle(
                                       color: Colors.white, fontSize: 15))),
                           Row(
@@ -623,6 +606,7 @@ class _HomeState extends State<Home> {
                                 Expanded(
                                     flex: 4,
                                     child: TextField(
+                                      controller: _searchQuery,
                                       decoration: InputDecoration(
                                           fillColor: Colors.white,
                                           filled: true,
@@ -638,22 +622,34 @@ class _HomeState extends State<Home> {
                                 Spacer(),
                                 Expanded(
                                     flex: 1,
-                                    child: TextButton.icon(
-                                        style: ButtonStyle(
-                                            backgroundColor:
-                                                MaterialStatePropertyAll(
-                                                    Colors.white),
-                                            padding: MaterialStateProperty.all<
-                                                    EdgeInsets>(
-                                                EdgeInsets.symmetric(
-                                                    vertical: 18)),
-                                            shape: MaterialStateProperty.all(
-                                                RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(10)))),
-                                        onPressed: () {},
-                                        icon: Icon(Icons.search),
-                                        label: Text('')))
+                                    child: IconButton(
+                                      style: ButtonStyle(
+                                          backgroundColor:
+                                              MaterialStatePropertyAll(
+                                                  Colors.white),
+                                          padding: MaterialStateProperty.all<
+                                                  EdgeInsets>(
+                                              EdgeInsets.symmetric(
+                                                  vertical: 18)),
+                                          shape: MaterialStateProperty.all(
+                                              RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          10)))),
+                                      onPressed: () {
+                                        String searchQuery = _searchQuery.text
+                                            .replaceAll(" ", "")
+                                            .toLowerCase();
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    SearchResults(
+                                                        searchQuery:
+                                                            searchQuery)));
+                                      },
+                                      icon: Icon(Icons.search),
+                                    ))
                               ]),
                           SizedBox(height: 20),
                           CircleAvatar(
@@ -683,12 +679,102 @@ class _HomeState extends State<Home> {
                               ),
                               onPressed: handleSignOut,
                               child: Text('Sign Out',
-                                  style: TextStyle(color: Colors.white)))
+                                  style: TextStyle(color: Colors.white))),
+                          Container(
+                              margin: EdgeInsets.fromLTRB(0, 10, 0, 0),
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                "Public Itineraries",
+                                style: TextStyle(
+                                    fontSize: 25, color: Colors.white),
+                              )),
+                          StreamBuilder<dynamic>(
+                            stream: FirebaseFirestore.instance
+                                .collection("itineraries")
+                                //.where("tripLocation", isGreaterThanOrEqualTo: widget.searchQuery)
+                                .where("email",
+                                    isEqualTo:
+                                        widget.firebaseUser!.currentUser!.email)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData) {
+                                return ListView.builder(
+                                    itemCount: snapshot.data!.docs.length,
+                                    shrinkWrap: true,
+                                    padding:
+                                        const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                                    itemBuilder: (context, index) {
+                                      return Center(
+                                          child: ItineraryRoute(
+                                        trip: snapshot.data!.docs[index],
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    EventRoute(
+                                                        trip: snapshot.data!
+                                                            .docs[index])),
+                                          );
+                                        },
+                                      ));
+                                    });
+                              } else {
+                                return CircularProgressIndicator(
+                                  backgroundColor: Colors.white,
+                                );
+                              }
+                            },
+                          )
                         ],
                       ));
                 }
               }));
     }
+  }
+
+  List<Trip> publicSortedDates = [];
+  List<Trip> publicPassedDates = [];
+
+  Future<List<Trip>> publicSortList() async {
+    String currentDay = DateTime.now().toIso8601String();
+    publicSortedDates.clear();
+    publicPassedDates.clear();
+    Database db = await UserDatabase.instance.database;
+    int count = Sqflite.firstIntValue(
+                await db.rawQuery('SELECT COUNT(*) FROM eventPlanner'))
+            ?.toInt() ??
+        0;
+    for (int i = 1; i <= count; i++) {
+      final maps =
+          await db.query(UserDatabase.table2, where: 'id2=?', whereArgs: [i]);
+      if (maps[0]['visibility'] == "Public") {
+        publicSortedDates.add(Trip(
+            title: maps[0]['tripName'].toString(),
+            location: maps[0]['tripLocation'].toString(),
+            start_date: maps[0]['tripStartDate'].toString(),
+            end_date: maps[0]['tripEndDate'].toString(),
+            visibility: maps[0]['visibility'].toString(),
+            email: maps[0]['email'].toString()));
+      }
+    }
+    publicSortedDates.sort((a, b) {
+      return a.start_date.compareTo(b.start_date);
+    });
+    for (var each in publicSortedDates) {
+      if (each.end_date.compareTo(currentDay) < 1) {
+        publicPassedDates.add(each);
+      }
+    }
+    publicSortedDates.removeWhere((e) => publicPassedDates.contains(e));
+    for (var each in publicPassedDates) {
+      publicSortedDates.add(each);
+    }
+    List<Trip> sentDates = [];
+    for (var each in publicSortedDates) {
+      sentDates.add(each);
+    }
+    return sentDates;
   }
 
   Widget full_navigation_button() {
@@ -869,7 +955,9 @@ Future<List<Trip>> sortList() async {
         title: maps[0]['tripName'].toString(),
         location: maps[0]['tripLocation'].toString(),
         start_date: maps[0]['tripStartDate'].toString(),
-        end_date: maps[0]['tripEndDate'].toString()));
+        end_date: maps[0]['tripEndDate'].toString(),
+        visibility: maps[0]['visibility'].toString(),
+        email: maps[0]['email'].toString()));
   }
   sortedDates.sort((a, b) {
     return a.start_date.compareTo(b.start_date);
@@ -895,21 +983,23 @@ class Trip {
   final String location;
   final String start_date;
   final String end_date;
-  const Trip(
+  String visibility;
+  final String email;
+  Trip(
       {required this.title,
       required this.location,
       required this.start_date,
-      required this.end_date});
+      required this.end_date,
+      required this.visibility,
+      required this.email});
 }
 
 class TripRoute extends StatefulWidget {
-  const TripRoute({
-    super.key,
-    required this.trip,
-    required this.onTap,
-  });
+  TripRoute(
+      {super.key, required this.trip, required this.onTap, this.firebaseUser});
   final Trip trip;
   final onTap;
+  FirebaseAuth? firebaseUser;
 
   @override
   State<TripRoute> createState() => _TripRouteState();
@@ -949,15 +1039,12 @@ class _TripRouteState extends State<TripRoute> {
               Column(
                 children: [
                   Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black),
-                      borderRadius: BorderRadius.all(Radius.circular(15)),
-                    ),
-                    child: TextButton.icon(
-                        onPressed: () {},
-                        icon: Icon(Icons.visibility),
-                        label: Text('Public')),
-                  ),
+                      key: ValueKey(widget.trip.visibility),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black),
+                        borderRadius: BorderRadius.all(Radius.circular(15)),
+                      ),
+                      child: visibilityButton()),
                   SizedBox(height: 5),
                   Container(
                     decoration: BoxDecoration(
@@ -976,6 +1063,113 @@ class _TripRouteState extends State<TripRoute> {
             ])));
   }
 
+  Widget visibilityButton() {
+    if (widget.firebaseUser != null &&
+        widget.trip.visibility == "Public" &&
+        (widget.firebaseUser!.currentUser == widget.trip.email ||
+            widget.trip.email == "None")) {
+      return TextButton.icon(
+          onPressed: () async {
+            widget.trip.visibility = "Private";
+            Database db = await UserDatabase.instance.database;
+            await db.rawUpdate(
+                'UPDATE eventPlanner SET visibility = ? WHERE tripName = ? AND tripLocation = ?',
+                [
+                  widget.trip.visibility,
+                  widget.trip.title,
+                  widget.trip.location
+                ]);
+            await deleteFirebaseQueries();
+          },
+          icon: Icon(Icons.visibility),
+          label: Text('${widget.trip.visibility}'));
+    } else if (widget.firebaseUser != null &&
+        widget.trip.visibility == "Private" &&
+        (widget.firebaseUser!.currentUser == widget.trip.email ||
+            widget.trip.email == "None")) {
+      return TextButton.icon(
+          onPressed: () async {
+            widget.trip.visibility = "Public";
+            Database db = await UserDatabase.instance.database;
+            await db.rawUpdate(
+                'UPDATE eventPlanner SET visibility = ? WHERE tripName = ? AND tripLocation = ?',
+                [
+                  widget.trip.visibility,
+                  widget.trip.title,
+                  widget.trip.location
+                ]);
+            await FirebaseFirestore.instance.collection("itineraries").add({
+              "email": widget.firebaseUser!.currentUser!.email,
+              'tripName': widget.trip.title,
+              'tripLocation': widget.trip.location,
+              'tripLocationQuery':
+                  widget.trip.location.replaceAll(" ", "").toLowerCase(),
+              'poster': widget.firebaseUser!.currentUser!.displayName,
+            });
+            List<tripEvent> pushToFirebase = [];
+            int count = Sqflite.firstIntValue(
+                        await db.rawQuery('SELECT COUNT(*) FROM users'))
+                    ?.toInt() ??
+                0;
+            for (int i = 1; i <= count; i++) {
+              final maps = await db
+                  .query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
+              if (maps[0]['tripNameEvent'] == widget.trip.title &&
+                  maps[0]["tripLocationEvent"] == widget.trip.location) {
+                pushToFirebase.add(tripEvent(
+                    name: maps[0]['name'].toString(),
+                    description: maps[0]['description'].toString(),
+                    dateTime: maps[0]['dateTime'].toString(),
+                    location: maps[0]['location'].toString(),
+                    fullAddress: maps[0]['fullAddress'].toString()));
+              }
+            }
+            for (var events in pushToFirebase) {
+              var query = FirebaseFirestore.instance.collection("events").add({
+                "eventName": events.name,
+                "eventDescription": events.description,
+                "eventLocation": events.location,
+                "eventFullAddress": events.fullAddress,
+                "email": widget.firebaseUser!.currentUser!.email,
+                "tripName": widget.trip.title,
+                "tripLocation": widget.trip.location,
+                "dateTime": events.dateTime
+              });
+            }
+            setState(() {});
+          },
+          icon: Icon(Icons.visibility_off),
+          label: Text('${widget.trip.visibility}'));
+    } else {
+      return SizedBox();
+    }
+  }
+
+  Future<void> deleteFirebaseQueries() async {
+    var snapshot = await FirebaseFirestore.instance
+        .collection("itineraries")
+        .where("email", isEqualTo: widget.firebaseUser!.currentUser!.email)
+        .where("tripName", isEqualTo: widget.trip.title)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      for (var doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    }
+    var snapshotEvents = await FirebaseFirestore.instance
+        .collection("events")
+        .where("email", isEqualTo: widget.firebaseUser!.currentUser!.email)
+        .where("tripName", isEqualTo: widget.trip.title)
+        .where("tripLocation", isEqualTo: widget.trip.location)
+        .get();
+    if (snapshotEvents.docs.isNotEmpty) {
+      for (var doc in snapshotEvents.docs) {
+        await doc.reference.delete();
+      }
+    }
+    setState(() {});
+  }
+
   Widget dateChecker() {
     if (widget.trip.start_date != '0000-00-00T00:00:00.000') {
       late var _start_date =
@@ -989,6 +1183,40 @@ class _TripRouteState extends State<TripRoute> {
       return Text('Dates: ${start_date} - ${end_date}');
     }
     return Text('Add an event!');
+  }
+
+  Future<void> _alertBuilder(BuildContext context, trip) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to delete this trip?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Yes'),
+              onPressed: () async {
+                delete(
+                  trip.title.toString(),
+                  trip.location.toString(),
+                );
+                await deleteFirebaseQueries();
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Home(),
+                    ));
+              },
+            ),
+            TextButton(
+              child: const Text('No'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -1006,37 +1234,4 @@ Future deleteFromList(Trip trip) async {
   if (sortedDates.contains(trip)) {
     sortedDates.remove(trip);
   }
-}
-
-Future<void> _alertBuilder(BuildContext context, trip) async {
-  return showDialog<void>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Are you sure you want to delete this trip?'),
-        actions: <Widget>[
-          TextButton(
-            child: const Text('Yes'),
-            onPressed: () {
-              delete(
-                trip.title.toString(),
-                trip.location.toString(),
-              );
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Home(),
-                  ));
-            },
-          ),
-          TextButton(
-            child: const Text('No'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      );
-    },
-  );
 }
