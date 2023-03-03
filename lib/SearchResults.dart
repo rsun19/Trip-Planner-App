@@ -15,6 +15,7 @@ import "package:firebase_core/firebase_core.dart";
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:trip_reminder/TripClass.dart';
 
 class SearchResults extends StatefulWidget {
   const SearchResults({super.key, required this.searchQuery});
@@ -148,7 +149,7 @@ class _EventRouteState extends State<EventRoute> {
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   return ListView.builder(
-                      key: ObjectKey(tripEvent),
+                      key: ObjectKey(TripEvent),
                       itemCount: snapshot.data!.docs.length,
                       shrinkWrap: true,
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),

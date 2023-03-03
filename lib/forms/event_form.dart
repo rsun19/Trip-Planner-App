@@ -4,6 +4,7 @@ import 'package:trip_reminder/database/user_info.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/api-ORS/openRouteService.dart';
+import 'package:trip_reminder/TripClass.dart';
 
 class UserFormCase extends StatelessWidget {
   const UserFormCase({
@@ -166,12 +167,6 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                 border: UnderlineInputBorder(),
                 labelText: "Enter an Event Description",
               ),
-              // validator: (value) {
-              //   if (value == null || value.isEmpty) {
-              //     return 'Please enter some text';
-              //   }
-              //   return null;
-              //}
             ),
           ),
           ElevatedButton(

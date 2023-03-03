@@ -20,6 +20,7 @@ import 'dart:convert'; //show json;
 import "package:firebase_core/firebase_core.dart";
 import 'package:trip_reminder/SearchResults.dart';
 import 'package:trip_reminder/globals.dart' as globals;
+import 'TripClass.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -978,22 +979,6 @@ Future<List<Trip>> sortList() async {
   return sentDates;
 }
 
-class Trip {
-  final String title;
-  final String location;
-  final String start_date;
-  final String end_date;
-  String visibility;
-  final String email;
-  Trip(
-      {required this.title,
-      required this.location,
-      required this.start_date,
-      required this.end_date,
-      required this.visibility,
-      required this.email});
-}
-
 class TripRoute extends StatefulWidget {
   TripRoute(
       {super.key, required this.trip, required this.onTap, this.firebaseUser});
@@ -1106,7 +1091,7 @@ class _TripRouteState extends State<TripRoute> {
                   widget.trip.location.replaceAll(" ", "").toLowerCase(),
               'poster': widget.firebaseUser!.currentUser!.displayName,
             });
-            List<tripEvent> pushToFirebase = [];
+            List<TripEvent> pushToFirebase = [];
             int count = Sqflite.firstIntValue(
                         await db.rawQuery('SELECT COUNT(*) FROM users'))
                     ?.toInt() ??
@@ -1116,7 +1101,7 @@ class _TripRouteState extends State<TripRoute> {
                   .query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
               if (maps[0]['tripNameEvent'] == widget.trip.title &&
                   maps[0]["tripLocationEvent"] == widget.trip.location) {
-                pushToFirebase.add(tripEvent(
+                pushToFirebase.add(TripEvent(
                     name: maps[0]['name'].toString(),
                     description: maps[0]['description'].toString(),
                     dateTime: maps[0]['dateTime'].toString(),

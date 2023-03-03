@@ -14,9 +14,10 @@ import 'package:maps_launcher/maps_launcher.dart';
 import 'package:trip_reminder/api-ORS/openRouteService.dart';
 import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/forms/changeItinerary.dart';
+import 'package:trip_reminder/TripClass.dart';
 
-class tripEvent {
-  const tripEvent(
+class TripEvent {
+  const TripEvent(
       {required this.name,
       required this.description,
       required this.dateTime,
@@ -29,7 +30,7 @@ class tripEvent {
   final String fullAddress;
 }
 
-const List<tripEvent> events = const <tripEvent>[];
+const List<TripEvent> events = const <TripEvent>[];
 
 Future<void> fetchRows() async {
   Database db = await UserDatabase.instance.database;
@@ -39,16 +40,16 @@ Future<void> fetchRows() async {
           0;
   events.clear();
   for (int i = 1; i <= count; i++) {
-    tripEvent map = await get(i);
+    TripEvent map = await get(i);
     events.add(map);
   }
 }
 
-Future<tripEvent> get(int id) async {
+Future<TripEvent> get(int id) async {
   Database db = await UserDatabase.instance.database;
   final maps =
       await db.query(UserDatabase.table, where: 'id2=?', whereArgs: [id]);
-  return tripEvent(
+  return TripEvent(
       name: maps[0][0].toString(),
       description: maps[0][1].toString(),
       dateTime: maps[0][2].toString(),
@@ -124,12 +125,12 @@ class _ProfileState extends State<Profile> {
             SizedBox(
                 height: 1000,
                 width: 1000,
-                child: FutureBuilder<List<tripEvent>>(
+                child: FutureBuilder<List<TripEvent>>(
                     future: sortedList(),
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
                         return ListView.builder(
-                            key: ObjectKey(tripEvent),
+                            key: ObjectKey(TripEvent),
                             itemCount: snapshot.data!.length,
                             shrinkWrap: true,
                             padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -182,7 +183,7 @@ class _ProfileState extends State<Profile> {
         ));
   }
 
-  Future<List<tripEvent>> sortedList() async {
+  Future<List<TripEvent>> sortedList() async {
     String currentDay =
         DateTime.now().toIso8601String().split('T')[0].toString() +
             'T00:00:00.000';
@@ -198,7 +199,7 @@ class _ProfileState extends State<Profile> {
           await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
       if (maps[0]['tripNameEvent'] == widget.trip.title &&
           maps[0]["tripLocationEvent"] == widget.trip.location) {
-        eventSortedDates.add(tripEvent(
+        eventSortedDates.add(TripEvent(
             name: maps[0]['name'].toString(),
             description: maps[0]['description'].toString(),
             dateTime: maps[0]['dateTime'].toString(),
@@ -214,7 +215,7 @@ class _ProfileState extends State<Profile> {
         eventPassedDates.add(each);
       }
     }
-    List<tripEvent> sentEvents = [];
+    List<TripEvent> sentEvents = [];
     eventSortedDates.removeWhere((e) => eventPassedDates.contains(e));
     for (var each in eventPassedDates) {
       eventSortedDates.add(each);
@@ -335,7 +336,7 @@ class eventInfo extends StatefulWidget {
     required this.onTap,
   });
 
-  final tripEvent tripevent;
+  final TripEvent tripevent;
   final VoidCallback onTap;
   final Trip trip;
 
@@ -490,7 +491,7 @@ class EventView extends StatefulWidget {
   });
 
   final Trip trip;
-  final tripEvent tripevent;
+  final TripEvent tripevent;
 
   @override
   State<EventView> createState() => _EventViewState();
@@ -590,8 +591,8 @@ class _EventViewState extends State<EventView> {
   }
 }
 
-List<tripEvent> eventSortedDates = [];
-List<tripEvent> eventPassedDates = [];
+List<TripEvent> eventSortedDates = [];
+List<TripEvent> eventPassedDates = [];
 List<Marker> temp_marker = [];
 List<LatLng> temp_point = [];
 
@@ -681,7 +682,7 @@ Future<void> _navigationChoice(BuildContext context, lat, lng) async {
 }
 
 Future<void> _alertBuilder(
-    BuildContext context, Trip trip, tripEvent tripevent) async {
+    BuildContext context, Trip trip, TripEvent tripevent) async {
   return showDialog<void>(
     context: context,
     builder: (BuildContext context) {

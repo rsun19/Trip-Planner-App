@@ -4,6 +4,7 @@ import 'package:trip_reminder/database/user_info.dart';
 import 'package:intl/intl.dart';
 import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/api-ORS/openRouteService.dart';
+import 'package:trip_reminder/TripClass.dart';
 
 class ChangeTripName extends StatefulWidget {
   const ChangeTripName({super.key, required this.trip});
