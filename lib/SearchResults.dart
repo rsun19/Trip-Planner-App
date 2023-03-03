@@ -16,6 +16,8 @@ import 'package:intl/intl.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/TripClass.dart';
+import 'package:trip_reminder/firebase interactions/view_searched_events.dart';
+import 'package:trip_reminder/firebase interactions/view_event_trips';
 
 class SearchResults extends StatefulWidget {
   const SearchResults({super.key, required this.searchQuery});
@@ -40,8 +42,6 @@ class _SearchResultsState extends State<SearchResults> {
         body: StreamBuilder<dynamic>(
           stream: FirebaseFirestore.instance
               .collection("itineraries")
-              //.where("tripLocationQuery",
-              //  isGreaterThanOrEqualTo: widget.searchQuery)
               .where("tripLocationQuery",
                   isLessThanOrEqualTo: widget.searchQuery)
               .snapshots(),
@@ -178,177 +178,6 @@ class _EventRouteState extends State<EventRoute> {
                   );
                 }
               })),
-    );
-  }
-}
-
-class ViewFirebaseEvent extends StatefulWidget {
-  const ViewFirebaseEvent(
-      {super.key,
-      required this.trip,
-      required this.tripevent,
-      required this.onTap});
-
-  final trip;
-  final tripevent;
-  final VoidCallback onTap;
-
-  @override
-  State<ViewFirebaseEvent> createState() => _ViewFirebaseEventState();
-}
-
-class _ViewFirebaseEventState extends State<ViewFirebaseEvent> {
-  late List dateTimeList = widget.tripevent["dateTime"].split('T');
-  late var _time = DateFormat.Hm().parse(dateTimeList[1].substring(0, 5));
-  late var time = DateFormat.jm().format(_time);
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-        onTap: () {
-          widget.onTap();
-        },
-        child: Container(
-            height: 175,
-            width: MediaQuery.of(context).size.height,
-            margin: EdgeInsets.fromLTRB(0, 20, 0, 0),
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.white),
-                borderRadius: BorderRadius.all(Radius.circular(15))),
-            child: Row(children: <Widget>[
-              Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      child: Text(
-                        'Name: ${widget.tripevent["eventName"]}',
-                        style: TextStyle(
-                            //fontSize: 20,
-                            //letterSpacing: .5,
-                            ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Container(
-                      child: Text(
-                        'At ' + '${time}',
-                        style: TextStyle(
-                            //fontSize: 20,
-                            //letterSpacing: .5,
-                            ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Container(
-                      child: Text(
-                        'Location: ' +
-                            '${widget.tripevent["eventFullAddress"]}',
-                        style: TextStyle(
-                            //fontSize: 20,
-                            //letterSpacing: .5,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ])));
-  }
-}
-
-class ViewFirebaseEventDetails extends StatefulWidget {
-  const ViewFirebaseEventDetails({
-    super.key,
-    required this.trip,
-    required this.tripevent,
-  });
-
-  final trip;
-  final tripevent;
-
-  @override
-  State<ViewFirebaseEventDetails> createState() =>
-      _ViewFirebaseEventDetailsState();
-}
-
-class _ViewFirebaseEventDetailsState extends State<ViewFirebaseEventDetails> {
-  late List dateTimeList = widget.tripevent["dateTime"].split('T');
-  late var _time = DateFormat.Hm().parse(dateTimeList[1].substring(0, 5));
-  late var time = DateFormat.jm().format(_time);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(
-          '${widget.tripevent["eventName"]}',
-          style: TextStyle(
-            color: Colors.white,
-            letterSpacing: 2.0,
-          ),
-        ),
-      ),
-      backgroundColor: Colors.blue,
-      body: Center(
-        child: Container(
-          height: 700,
-          width: 300,
-          margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.white),
-              borderRadius: BorderRadius.all(Radius.circular(15))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Container(
-                child: Text(
-                  'Name: ${widget.tripevent["eventName"]}',
-                  style: TextStyle(
-                    fontSize: 20,
-                    letterSpacing: .5,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Container(
-                child: Text(
-                  'Time ' + '${time}',
-                  style: TextStyle(
-                      //fontSize: 20,
-                      //letterSpacing: .5,
-                      ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Container(
-                child: Text(
-                  'Location: ${widget.tripevent["eventFullAddress"]}',
-                  style: TextStyle(
-                      //fontSize: 20,
-                      //letterSpacing: .5,
-                      ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Container(
-                child: Text(
-                  'Description: ${widget.tripevent["eventDescription"]}',
-                  style: TextStyle(
-                      //fontSize: 20,
-                      //letterSpacing: .5,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
