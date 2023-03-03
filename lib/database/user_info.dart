@@ -2,54 +2,6 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:async';
 import 'package:path/path.dart';
 
-// class UserInfo {
-//   late int id;
-//   late String name;
-//   late String description;
-//   late String dateTime;
-//   late String location;
-//   late String fullAddress;
-//   late String tripName;
-//   late String tripLocation;
-
-//   UserInfo(this.id, this.name, this.description, this.dateTime, this.location,
-//       this.fullAddress, this.tripName, this.tripLocation);
-
-//   Map<String, dynamic> toMap() {
-//     return {
-//       UserDatabase.columnId: id,
-//       UserDatabase.columnName: name,
-//       UserDatabase.columnDescription: description,
-//       UserDatabase.columnDateTime: dateTime,
-//       UserDatabase.columnLocation: location,
-//       UserDatabase.fullAddress: fullAddress,
-//       UserDatabase.columnTripNameEvent: tripName,
-//       UserDatabase.columnTripLocationEvent: tripLocation,
-//     };
-//   }
-// }
-
-// class TripInfo {
-//   late int id;
-//   late String tripName;
-//   late String tripLocation;
-//   late String startDate;
-//   late String endDate;
-
-//   TripInfo(
-//       this.id, this.tripName, this.tripLocation, this.startDate, this.endDate);
-
-//   Map<String, dynamic> toMap() {
-//     return {
-//       UserDatabase.columnId: id,
-//       UserDatabase.columnTripName: tripName,
-//       UserDatabase.columnTripLocation: tripLocation,
-//       UserDatabase.columnTripStartDate: startDate,
-//       UserDatabase.columnTripEndDate: endDate,
-//     };
-//   }
-// }
-
 class UserDatabase {
   static final _databaseName = "userinfo.db";
   static final _databaseVersion = 1;
