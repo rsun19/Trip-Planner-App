@@ -16,20 +16,6 @@ import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/forms/changeItinerary.dart';
 import 'package:trip_reminder/TripClass.dart';
 
-class TripEvent {
-  const TripEvent(
-      {required this.name,
-      required this.description,
-      required this.dateTime,
-      required this.location,
-      required this.fullAddress});
-  final String name;
-  final String description;
-  final String dateTime;
-  final String location;
-  final String fullAddress;
-}
-
 const List<TripEvent> events = const <TripEvent>[];
 
 Future<void> fetchRows() async {

@@ -119,6 +119,32 @@ class _HomeState extends State<Home> {
                         padding: MaterialStateProperty.all<EdgeInsets>(
                             EdgeInsets.all(10)),
                       ),
+                      onPressed: () {},
+                      icon: Icon(
+                        Icons.subway,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        'In NYC? See real-time arrivals.',
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )),
+              Positioned(
+                  bottom: 60,
+                  right: 0,
+                  child: Container(
+                    margin: EdgeInsets.fromLTRB(0, 0, 20, 20),
+                    padding: EdgeInsets.all(10),
+                    child: ElevatedButton.icon(
+                      style: ButtonStyle(
+                        backgroundColor:
+                            MaterialStateProperty.all<Color>(Colors.lightBlue),
+                        padding: MaterialStateProperty.all<EdgeInsets>(
+                            EdgeInsets.all(10)),
+                      ),
                       onPressed: () {
                         Navigator.push(context,
                             MaterialPageRoute(builder: (context) {

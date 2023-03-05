@@ -33,7 +33,6 @@ migrate_working_dir/
 /build/
 /lib/auth/secrets.dart
 /android/app/google-services.json
-/android/
 /ios/
 /linux/
 /macos/

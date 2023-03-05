@@ -134,6 +134,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.0"
+  fixnum:
+    dependency: transitive
+    description:
+      name: fixnum
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -247,6 +254,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.10.2+1"
+  gtfs_realtime_bindings:
+    dependency: "direct main"
+    description:
+      name: gtfs_realtime_bindings
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.1"
   http:
     dependency: "direct main"
     description:
@@ -426,6 +440,13 @@ packages:
     dependency: transitive
     description:
       name: proj4dart
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.1.0"
+  protobuf:
+    dependency: transitive
+    description:
+      name: protobuf
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.0"
