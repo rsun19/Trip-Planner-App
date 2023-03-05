@@ -1,13 +1,6 @@
-import 'dart:collection';
-import 'dart:html';
 import 'dart:io';
-
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:latlong2/latlong.dart';
-import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/auth/secrets.dart';
-import 'package:http/http.dart' as http;
 import 'package:gtfs_realtime_bindings/gtfs_realtime_bindings.dart';
 
 class MtaApiCaller {
@@ -28,12 +21,35 @@ class MtaApiCaller {
     'SIR':
         'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si'
   };
-  late List<String> lineCaller;
+  List<String> lineCaller;
   List<dynamic> lineReturner = [];
-  MtaApiCaller(lineCaller);
+  String apiStation;
+  MtaApiCaller({required this.lineCaller, required this.apiStation});
+
+  final lineCounter = <String, int>{
+    'ACE': 0,
+    'BDFM': 0,
+    'G': 0,
+    'JZ': 0,
+    'NQRW': 0,
+    'L': 0,
+    '1234567': 0,
+    'SIR': 0
+  };
 
   void ApiIterator() async {
-    lineCaller.forEach((element) => ApiCaller(element));
+    print(lineCaller);
+    for (String line in lineCaller) {
+      for (String possibleLine in lineCounter.keys) {
+        if (possibleLine.contains(line)) {
+          lineCounter.update(possibleLine, (value) => value + 1);
+          if (lineCounter[possibleLine]! <= 1) {
+            ApiCaller(possibleLine);
+            print(possibleLine);
+          }
+        }
+      }
+    }
   }
 
   void ApiCaller(String line) async {
