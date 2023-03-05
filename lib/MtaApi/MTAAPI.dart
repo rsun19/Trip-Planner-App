@@ -37,14 +37,14 @@ class MtaApiCaller {
     'SIR': 0
   };
 
-  void ApiIterator() async {
+  Future<void> ApiIterator() async {
     print(lineCaller);
     for (String line in lineCaller) {
       for (String possibleLine in lineCounter.keys) {
         if (possibleLine.contains(line)) {
           lineCounter.update(possibleLine, (value) => value + 1);
           if (lineCounter[possibleLine]! <= 1) {
-            ApiCaller(possibleLine);
+            await ApiCaller(possibleLine);
             print(possibleLine);
           }
         }
@@ -52,15 +52,20 @@ class MtaApiCaller {
     }
   }
 
-  void ApiCaller(String line) async {
+  Future<void> ApiCaller(String line) async {
     final url = Uri.parse(lineApi[line]!);
     final response = await http.get(url, headers: {"x-api-key": API_KEY});
     if (response.statusCode == 200) {
       final message = FeedMessage.fromBuffer(response.bodyBytes);
-      lineReturner.add(message);
-      print(message);
+      var messageData = message.toProto3Json();
+      print(messageData);
     } else {
       throw HttpException("Failed to get a proper response.");
     }
+  }
+
+  void GTFSParser(var message) {
+    List<dynamic> entities = message['entity'];
+    for (int i = 0; i < entities.length; i += 2) {}
   }
 }

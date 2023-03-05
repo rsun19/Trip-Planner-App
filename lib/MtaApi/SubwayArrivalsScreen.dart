@@ -1,17 +1,12 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:ffi';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:trip_reminder/api-ORS/openRouteService.dart';
-import 'package:trip_reminder/main.dart';
-import 'package:trip_reminder/profile/event_listings.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:csv/csv.dart';
 import 'package:trip_reminder/MtaApi/MTAAPI.dart';
+import 'package:trip_reminder/AlertDialog.dart';
 
 class SubwayScreen extends StatefulWidget {
   SubwayScreen({super.key});
@@ -29,7 +24,9 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   List<List<dynamic>> subwayData = [];
 
-  List<dynamic> apiCaller = [];
+  List<dynamic> apiCaller = ['', '', '', '', ''];
+
+  bool apiCallSuccess = true;
 
   @override
   Widget build(BuildContext context) {
@@ -52,8 +49,25 @@ class _SubwayScreenState extends State<SubwayScreen> {
                     icon: Icon(Icons.subway),
                     label: Text('Click for real-time data'))),
           ]),
-          showText()
+          Text(
+              key: ValueKey(apiCaller[0]),
+              'Station: ${apiCaller[1] ?? ''}. Lines: ${apiCaller[2].toString().replaceAll("-", ", ") ?? ''}'),
+          alertBuilderController(),
         ]));
+  }
+
+  Widget alertBuilderController() {
+    ValueKey(apiCallSuccess);
+    if (apiCallSuccess == false) {
+      apiCallSuccess = true;
+      return failedAlertBuilder(
+          context,
+          "Real-time Subway Data is not available at this moment.",
+          "Refresh page",
+          "Return home");
+    } else {
+      return SizedBox();
+    }
   }
 
   Widget showText() {
@@ -79,7 +93,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
         coordinates.add(position.longitude);
         await readCSVFile();
         await findClosestPosition();
-        await Future.delayed(Duration(seconds: 60));
+        await Future.delayed(const Duration(seconds: 60));
       }
     });
   }
@@ -87,40 +101,30 @@ class _SubwayScreenState extends State<SubwayScreen> {
   Future<void> findClosestPosition() async {
     //try {
     subwayData.sort((a, b) {
-      return Geolocator.distanceBetween(
-                  a[3], a[4], coordinates[0], coordinates[1])
+      return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
+                  coordinates[1].toDouble())
               .toInt() -
-          Geolocator.distanceBetween(b[3], b[4], coordinates[0], coordinates[1])
+          Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
+                  coordinates[1].toDouble())
               .toInt();
     });
-    // if (apiCaller.isNotEmpty && apiCaller[0] != subwayData[0]) {
-    //   apiCaller.clear();
-    //   apiCaller.addAll(subwayData[0]);
-    //   callApi();
-    // } else if (apiCaller.isEmpty) {
-    //   apiCaller.addAll(subwayData[0]);
-    //   callApi();
-    // }
+    print(subwayData[0]);
     apiCaller.clear();
     apiCaller.addAll(subwayData[0]);
     await callApi();
     // } catch (e) {
-    //   Text('Cannot get data');
-    //   print("failed");
+    //   apiCallSuccess = false;
+    //   print('failure');
     // }
   }
 
   Future<void> callApi() async {
     List<String> lineCaller =
-        apiCaller[3].toString().replaceAll(" ", "").split("-");
+        apiCaller[2].toString().replaceAll(" ", "").split("-");
     String stopName = apiCaller[0].toString();
     MtaApiCaller MTACaller =
         MtaApiCaller(lineCaller: lineCaller, apiStation: stopName);
-    try {
-      MTACaller.ApiIterator();
-    } catch (e) {
-      Text('Real-time data not available. Please try again later.');
-    }
+    MTACaller.ApiIterator();
   }
 
   Future<void> readCSVFile() async {

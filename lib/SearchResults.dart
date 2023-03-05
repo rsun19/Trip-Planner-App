@@ -17,7 +17,7 @@ import 'package:trip_reminder/database/user_info.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/TripClass.dart';
 import 'package:trip_reminder/firebase interactions/view_searched_events.dart';
-import 'package:trip_reminder/firebase interactions/view_event_trips';
+import 'package:trip_reminder/firebase interactions/view_event_trips.dart';
 
 class SearchResults extends StatefulWidget {
   const SearchResults({super.key, required this.searchQuery});
