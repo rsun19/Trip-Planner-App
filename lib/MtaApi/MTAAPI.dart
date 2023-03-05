@@ -28,14 +28,20 @@ class MtaApiCaller {
     'SIR':
         'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si'
   };
-  late String lineCaller;
+  late List<String> lineCaller;
+  List<dynamic> lineReturner = [];
   MtaApiCaller(lineCaller);
 
-  void ApiCaller() async {
-    final url = Uri.parse(lineApi[lineCaller]!);
+  void ApiIterator() async {
+    lineCaller.forEach((element) => ApiCaller(element));
+  }
+
+  void ApiCaller(String line) async {
+    final url = Uri.parse(lineApi[line]!);
     final response = await http.get(url, headers: {"x-api-key": API_KEY});
     if (response.statusCode == 200) {
       final message = FeedMessage.fromBuffer(response.bodyBytes);
+      lineReturner.add(message);
       print(message);
     } else {
       throw HttpException("Failed to get a proper response.");
