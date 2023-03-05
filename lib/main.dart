@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:trip_reminder/MtaApi/SubwayArrivalsScreen.dart';
 import 'package:trip_reminder/SearchResults.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/forms/event_trip.dart';
@@ -119,7 +120,12 @@ class _HomeState extends State<Home> {
                         padding: MaterialStateProperty.all<EdgeInsets>(
                             EdgeInsets.all(10)),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return SubwayScreen();
+                        }));
+                      },
                       icon: Icon(
                         Icons.subway,
                         color: Colors.white,
