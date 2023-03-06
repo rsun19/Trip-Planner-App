@@ -28,9 +28,9 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   bool apiCallSuccess = true;
 
-  List<Subway> masterList = [];
+  List<List<Subway>> masterList = [];
 
-  late Station station;
+  late Station station; // = Station(routeId: [], stopId: [], stationCode: '');
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
         appBar: AppBar(
           backgroundColor: Colors.lightBlue,
           title: Text(
-            "Real-Time Subway Arrival and Departures",
+            "Real-Time Subway Tracker",
             style: TextStyle(color: Colors.white, fontSize: 20),
           ),
         ),
@@ -53,17 +53,16 @@ class _SubwayScreenState extends State<SubwayScreen> {
                     icon: Icon(Icons.subway),
                     label: Text('Click for real-time data'))),
           ]),
-          Text(
-              key: ObjectKey(Station),
-              'Station: ${station.stationName ?? ''}. Lines: ${station.routeId.toString() ?? ''}'),
-          SizedBox(height: 20),
-          subwayArrivalsBuilder(),
-          alertBuilderController(),
+          stationBuilder(),
+          SizedBox(
+              height: MediaQuery.of(context).size.height - 500,
+              width: MediaQuery.of(context).size.width,
+              child: alertBuilderController()),
         ]));
   }
 
-  Widget subwayArrivalsBuilder() {
-    return FutureBuilder<List<Subway>>(
+  Widget stationBuilder() {
+    return FutureBuilder<List<String>>(
       future: getCurrentPositionUtilityMethod(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
@@ -76,13 +75,19 @@ class _SubwayScreenState extends State<SubwayScreen> {
                 return Center(
                     key: ObjectKey(masterList),
                     child: SubwayRoute(
-                      subway: snapshot.data![index],
+                      station: station,
+                      subwayData: masterList,
+                      stationName: snapshot.data![index],
+                      index: index,
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => SubwayRouteDetails(
-                                  subway: snapshot.data![index])),
+                              builder: (context) => SubwayListBuilder(
+                                  index: index,
+                                  station: station,
+                                  subwayData: masterList,
+                                  stationName: snapshot.data![index])),
                         );
                       },
                     ));
@@ -133,7 +138,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
     return SizedBox();
   }
 
-  Future<List<Subway>> getCurrentPositionUtilityMethod() async {
+  Future<List<String>> getCurrentPositionUtilityMethod() async {
     final LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
     );
@@ -147,65 +152,106 @@ class _SubwayScreenState extends State<SubwayScreen> {
     coordinates.add(position!.longitude);
     await readCSVFile();
     await findClosestPosition();
-    return masterList;
+    print(station.stationName);
+    return station.stationName;
   }
 
   Future<Widget> findClosestPosition() async {
-    //try {
-    subwayData.sort((a, b) {
-      return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
-                  coordinates[1].toDouble())
-              .toInt() -
-          Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
-                  coordinates[1].toDouble())
-              .toInt();
-    });
-    List<String> sortedSubwayData = subwayComparator(subwayData);
-    List<String> stationData = returnStations(sortedSubwayData);
-    station = Station(
-        routeId: sortedSubwayData,
-        stopId: stationData,
-        stationName: subwayData[0][1].toString());
-    await callApi(station);
-    // } catch (e) {
-    //   apiCallSuccess = false;
-    //   print('failure');
-    //   return failedAlertBuilder(
-    //       context,
-    //       "Real-time Subway Data is not available at this moment.",
-    //       "Refresh page",
-    //       "Return home");
-    // }
+    try {
+      subwayData.sort((a, b) {
+        return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
+                    coordinates[1].toDouble())
+                .toInt() -
+            Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
+                    coordinates[1].toDouble())
+                .toInt();
+      });
+      List<List<String>> sortedSubwayData = subwayComparator(subwayData);
+      List<String> stationData = returnStations(subwayData, sortedSubwayData);
+      List<String> stationName =
+          returnStationNames(subwayData, sortedSubwayData);
+      sortedSubwayData.removeLast();
+      station = Station(
+          routeId: sortedSubwayData,
+          stopId: stationData,
+          stationName: stationName);
+      await callApi(station);
+    } catch (e) {
+      apiCallSuccess = false;
+      print('failure');
+      return failedAlertBuilder(
+          context,
+          "Real-time Subway Data is not available at this moment.",
+          "Refresh page",
+          "Return home");
+    }
     return SizedBox();
   }
 
-  List<String> subwayComparator(List<List<dynamic>> subwayData) {
-    List<String> subwayDataSorted = subwayData[0][2].toString().split('-');
+  List<List<String>> subwayComparator(List<List<dynamic>> subwayData) {
+    List<List<String>> subwayDataSorted = [
+      subwayData[0][2].toString().split('-')
+    ];
     List<int> sortedStationsCount = [];
-    for (int i = 0; i < subwayData.length; i++) {
-      if (subwayData[0][3] == subwayData[i][3] &&
-          subwayData[0][4] == subwayData[i][4]) {
-        subwayDataSorted.addAll(subwayData[i][2].toString().split("-"));
+    for (int i = 1; i < subwayData.length; i++) {
+      if (Geolocator.distanceBetween(
+              subwayData[0][3].toDouble(),
+              subwayData[0][4].toDouble(),
+              subwayData[i][3].toDouble(),
+              subwayData[i][4].toDouble()) <
+          100) {
+        subwayDataSorted.addAll([subwayData[i][2].toString().split("-")]);
         sortedStationsCount.add(i);
       }
     }
-    String max = sortedStationsCount[-1].toString();
+    List<String> max = [sortedStationsCount.last.toString()];
     subwayDataSorted.add(max);
     return subwayDataSorted;
   }
 
-  List<String> returnStations(List<String> sortedSubwayData) {
-    int iterator = int.parse(sortedSubwayData[-1]);
+  List<String> returnStations(
+      List<dynamic> subwayData, List<List<String>> sortedSubwayData) {
+    int iterator = int.parse(sortedSubwayData.last[0]);
     List<String> output = [];
     for (int i = 0; i <= iterator; i++) {
-      output.add(sortedSubwayData[i][0]);
+      output.add(subwayData[i][0]);
+    }
+    return output;
+  }
+
+  List<String> returnStationNames(
+      List<dynamic> subwayData, List<List<String>> sortedSubwayData) {
+    int iterator = int.parse(sortedSubwayData.last[0]);
+    print(sortedSubwayData);
+    List<String> output = [];
+    for (int i = 0; i <= iterator; i++) {
+      output.add(subwayData[i][1]);
     }
     return output;
   }
 
   Future<void> callApi(Station station) async {
-    MtaApiCaller MTACaller =
-        MtaApiCaller(lineCaller: station.routeId, apiStation: station.stopId);
+    final lineCounter = <String, int>{
+      'ACE': 0,
+      'BDFM': 0,
+      'G': 0,
+      'JZ': 0,
+      'NQRW': 0,
+      'L': 0,
+      '1234567': 0,
+      'SIR': 0
+    };
+    List<String> lineCaller = [];
+    station.routeId.forEach((element) {
+      element.forEach((element) {
+        lineCaller.add(element);
+      });
+    });
+
+    MtaApiCaller MTACaller = MtaApiCaller(
+        lineCaller: lineCaller,
+        apiStation: station.stopId,
+        lineCounter: lineCounter);
     masterList.clear();
     masterList = await MTACaller.ApiIterator();
   }

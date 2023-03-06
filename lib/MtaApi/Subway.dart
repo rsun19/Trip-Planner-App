@@ -15,9 +15,9 @@ class Subway {
 }
 
 class Station {
-  final List<String> routeId;
+  final List<List<String>> routeId;
   final List<String> stopId;
-  final String stationName;
+  final List<String> stationName;
   const Station(
       {required this.routeId, required this.stopId, required this.stationName});
 }

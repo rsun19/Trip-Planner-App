@@ -28,29 +28,26 @@ class MtaApiCaller {
   List<String> lineCaller;
   List<dynamic> lineReturner = [];
   List<String> apiStation;
-  MtaApiCaller({required this.lineCaller, required this.apiStation});
+  MtaApiCaller(
+      {required this.lineCaller,
+      required this.apiStation,
+      required this.lineCounter});
 
-  final lineCounter = <String, int>{
-    'ACE': 0,
-    'BDFM': 0,
-    'G': 0,
-    'JZ': 0,
-    'NQRW': 0,
-    'L': 0,
-    '1234567': 0,
-    'SIR': 0
-  };
+  Map<String, int> lineCounter;
 
-  Future<List<Subway>> ApiIterator() async {
+  Future<List<List<Subway>>> ApiIterator() async {
     print(lineCaller);
-    List<Subway> masterList = [];
+    for (String each in lineCounter.keys) {
+      lineCounter[each] = 0;
+    }
+    List<List<Subway>> masterList = [];
     for (String line in lineCaller) {
       for (String possibleLine in lineCounter.keys) {
         if (possibleLine.contains(line)) {
           lineCounter.update(possibleLine, (value) => value + 1);
           if (lineCounter[possibleLine]! <= 1) {
             List<Subway> topFourArrivals = await ApiCaller(possibleLine);
-            masterList.addAll(topFourArrivals);
+            masterList.addAll([topFourArrivals]);
           }
         }
       }
@@ -64,7 +61,8 @@ class MtaApiCaller {
     if (response.statusCode == 200) {
       final message = FeedMessage.fromBuffer(response.bodyBytes);
       var messageData = message.toProto3Json();
-      print(messageData);
+      //print(messageData);
+      //debugPrint(messageData.toString(), wrapWidth: 1024);
       return await GTFSParser(messageData);
     } else {
       throw HttpException("Failed to get a proper response.");
@@ -76,48 +74,58 @@ class MtaApiCaller {
     List<dynamic> entities = message['entity'];
     List<Subway> lineInformation = [];
     for (int i = 0; i < entities.length; i += 2) {
-      String tripId = entities[i]['tripUpdate']['trip']['tripId'];
-      String routeId = entities[i]['tripUpdate']['trip']['routeId'].toString();
-      String stopSequencePosition =
-          entities[i + 1]['vehicle']['currentStopSequence'].toString();
-      String stopId = entities[i + 1]['vehicle']['stopId'].toString();
-      List<String> prelimInfo = [tripId, routeId, stopSequencePosition, stopId];
-      if (entities[i]['tripUpdate']['stopTimeUpdate'] != null) {
-        for (int stop = 0;
-            stop < entities[i]['tripUpdate']['stopTimeUpdate'].length;
-            stop++) {
-          var baseline = entities[i]['tripUpdate']['stopTimeUpdate'];
-          int arrivalTime =
-              (int.parse(baseline[stop]['arrival']['time'].toString()) -
-                  baselineTime);
-          String stopId = baseline[stop]['stopId'];
-          apiStation.forEach((station) {
-            if (stopId.toString().contains(station.toString()) &&
-                arrivalTime > 0) {
-              print('true');
-              prelimInfo.add(arrivalTime.toString());
-            }
-          });
+      try {
+        String tripId = entities[i]['tripUpdate']['trip']['tripId'];
+        String routeId =
+            entities[i]['tripUpdate']['trip']['routeId'].toString();
+
+        String stopSequencePosition = entities[i + 1]['vehicle']['trip']
+                ['currentStopSequence']
+            .toString();
+        String stopId = entities[i + 1]['vehicle']['stopId'].toString();
+        List<String> prelimInfo = [
+          tripId,
+          routeId,
+          stopSequencePosition,
+          stopId
+        ];
+        if (entities[i]['tripUpdate']['stopTimeUpdate'] != null) {
+          for (int stop = 0;
+              stop < entities[i]['tripUpdate']['stopTimeUpdate'].length;
+              stop++) {
+            var baseline = entities[i]['tripUpdate']['stopTimeUpdate'];
+            int arrivalTime =
+                (int.parse(baseline[stop]['arrival']['time'].toString()) -
+                    baselineTime);
+            String stopId = baseline[stop]['stopId'];
+            apiStation.forEach((station) {
+              if (stopId.toString().contains(station.toString()) &&
+                  arrivalTime > 0) {
+                print('true');
+                prelimInfo.add(arrivalTime.toString());
+              }
+            });
+          }
         }
-      }
-      if (prelimInfo.length == 5) {
-        String direction;
-        String arrivalTimeMinutes =
-            (int.parse(prelimInfo[4]) / 60).round().toString();
-        if (prelimInfo[3].substring(3, 4) == 'N') {
-          direction = "Uptown";
-        } else {
-          direction = "Downtown";
+        if (prelimInfo.length == 5) {
+          String direction;
+          String arrivalTimeMinutes =
+              (int.parse(prelimInfo[4]) / 60).round().toString();
+          if (prelimInfo[3].substring(3, 4) == 'N') {
+            direction = "Uptown";
+          } else {
+            direction = "Downtown";
+          }
+          Subway trainInfo = Subway(
+              tripId: prelimInfo[0],
+              routeId: prelimInfo[1],
+              stopSequencePosition: prelimInfo[2],
+              stopId: prelimInfo[3],
+              direction: direction,
+              arrivalTime: arrivalTimeMinutes);
+          lineInformation.add(trainInfo);
         }
-        Subway trainInfo = Subway(
-            tripId: prelimInfo[0],
-            routeId: prelimInfo[1],
-            stopSequencePosition: prelimInfo[2],
-            stopId: prelimInfo[3],
-            direction: direction,
-            arrivalTime: arrivalTimeMinutes);
-        lineInformation.add(trainInfo);
-      }
+      } catch (e) {}
     }
     return await sortResults(lineInformation);
   }
