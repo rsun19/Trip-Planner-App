@@ -28,6 +28,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   bool apiCallSuccess = true;
 
+  List<List<List<String>>> masterList = [];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,7 +137,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
     String stopName = apiCaller[0].toString();
     MtaApiCaller MTACaller =
         MtaApiCaller(lineCaller: lineCaller, apiStation: stopName);
-    MTACaller.ApiIterator();
+    masterList.clear();
+    masterList = await MTACaller.ApiIterator();
   }
 
   Future<void> readCSVFile() async {

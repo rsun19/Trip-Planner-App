@@ -40,22 +40,24 @@ class MtaApiCaller {
     'SIR': 0
   };
 
-  Future<void> ApiIterator() async {
+  Future<List<List<List<String>>>> ApiIterator() async {
     print(lineCaller);
+    List<List<List<String>>> masterList = [];
     for (String line in lineCaller) {
       for (String possibleLine in lineCounter.keys) {
         if (possibleLine.contains(line)) {
           lineCounter.update(possibleLine, (value) => value + 1);
           if (lineCounter[possibleLine]! <= 1) {
-            await ApiCaller(possibleLine);
-            print(possibleLine);
+            List<List<String>> topFourArrivals = await ApiCaller(possibleLine);
+            masterList.addAll([topFourArrivals]);
           }
         }
       }
     }
+    return masterList;
   }
 
-  Future<void> ApiCaller(String line) async {
+  Future<List<List<String>>> ApiCaller(String line) async {
     final url = Uri.parse(lineApi[line]!);
     final response = await http.get(url, headers: {"x-api-key": API_KEY});
     if (response.statusCode == 200) {
@@ -64,26 +66,23 @@ class MtaApiCaller {
       //debugPrint(messageData.toString(), wrapWidth: 1024);
       print(messageData);
       // var messageData1 = jsonDecode(messageData);
-      await GTFSParser(messageData);
+      return await GTFSParser(messageData);
     } else {
       throw HttpException("Failed to get a proper response.");
     }
   }
 
-  Future<void> GTFSParser(var message) async {
+  Future<List<List<String>>> GTFSParser(var message) async {
     int baselineTime = int.parse(message['header']['timestamp'].toString());
     List<dynamic> entities = message['entity'];
-    List<dynamic> lineInformation = [];
+    List<List<String>> lineInformation = [];
     for (int i = 0; i < entities.length; i += 2) {
       String tripId = entities[i]['tripUpdate']['trip']['tripId'];
       String routeId = entities[i]['tripUpdate']['trip']['routeId'].toString();
       String stopSequencePosition =
           entities[i + 1]['vehicle']['currentStopSequence'].toString();
       String stopId = entities[i + 1]['vehicle']['stopId'].toString();
-      List<dynamic> prelimInfo = [
-        [tripId, routeId, stopSequencePosition, stopId]
-      ];
-      List<List<String>> tempArray = [];
+      List<String> prelimInfo = [tripId, routeId, stopSequencePosition, stopId];
       if (entities[i]['tripUpdate']['stopTimeUpdate'] != null) {
         for (int stop = 0;
             stop < entities[i]['tripUpdate']['stopTimeUpdate'].length;
@@ -93,12 +92,30 @@ class MtaApiCaller {
               (int.parse(baseline[stop]['arrival']['time'].toString()) -
                   baselineTime);
           String stopId = baseline[stop]['stopId'];
-          List<String> _tempArray = [arrivalTime.toString(), stopId];
-          tempArray.addAll([_tempArray]);
+          if (stopId.toString().contains(this.apiStation.toString()) &&
+              arrivalTime > 0) {
+            print('true');
+            prelimInfo.add(arrivalTime.toString());
+          }
         }
       }
-      List<dynamic> combinedArray = [prelimInfo, tempArray];
-      lineInformation.addAll([combinedArray]);
+      lineInformation.addAll([prelimInfo]);
     }
+    return await sortResults(lineInformation);
+  }
+
+  Future<List<List<String>>> sortResults(
+      List<List<String>> lineInformation) async {
+    lineInformation.removeWhere((element) => element.length != 5);
+    lineInformation.sort(
+      (a, b) {
+        return int.parse(a[4]) - int.parse(b[4]);
+      },
+    );
+    if (lineInformation.length < 5) {
+      return lineInformation;
+    }
+    List<List<String>> topFourArrivals = lineInformation.sublist(0, 5);
+    return topFourArrivals;
   }
 }
