@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:trip_reminder/auth/secrets.dart';
 import 'package:gtfs_realtime_bindings/gtfs_realtime_bindings.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class MtaApiCaller {
   final String API_KEY = MTAApiKey;
@@ -58,14 +61,44 @@ class MtaApiCaller {
     if (response.statusCode == 200) {
       final message = FeedMessage.fromBuffer(response.bodyBytes);
       var messageData = message.toProto3Json();
+      //debugPrint(messageData.toString(), wrapWidth: 1024);
       print(messageData);
+      // var messageData1 = jsonDecode(messageData);
+      await GTFSParser(messageData);
     } else {
       throw HttpException("Failed to get a proper response.");
     }
   }
 
-  void GTFSParser(var message) {
+  Future<void> GTFSParser(var message) async {
+    int baselineTime = int.parse(message['header']['timestamp'].toString());
     List<dynamic> entities = message['entity'];
-    for (int i = 0; i < entities.length; i += 2) {}
+    List<dynamic> lineInformation = [];
+    for (int i = 0; i < entities.length; i += 2) {
+      String tripId = entities[i]['tripUpdate']['trip']['tripId'];
+      String routeId = entities[i]['tripUpdate']['trip']['routeId'].toString();
+      String stopSequencePosition =
+          entities[i + 1]['vehicle']['currentStopSequence'].toString();
+      String stopId = entities[i + 1]['vehicle']['stopId'].toString();
+      List<dynamic> prelimInfo = [
+        [tripId, routeId, stopSequencePosition, stopId]
+      ];
+      List<List<String>> tempArray = [];
+      if (entities[i]['tripUpdate']['stopTimeUpdate'] != null) {
+        for (int stop = 0;
+            stop < entities[i]['tripUpdate']['stopTimeUpdate'].length;
+            stop++) {
+          var baseline = entities[i]['tripUpdate']['stopTimeUpdate'];
+          int arrivalTime =
+              (int.parse(baseline[stop]['arrival']['time'].toString()) -
+                  baselineTime);
+          String stopId = baseline[stop]['stopId'];
+          List<String> _tempArray = [arrivalTime.toString(), stopId];
+          tempArray.addAll([_tempArray]);
+        }
+      }
+      List<dynamic> combinedArray = [prelimInfo, tempArray];
+      lineInformation.addAll([combinedArray]);
+    }
   }
 }

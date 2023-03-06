@@ -80,25 +80,30 @@ class _SubwayScreenState extends State<SubwayScreen> {
     }
   }
 
-  void getCurrentPosition() async {
+  Future<Widget> getCurrentPosition() async {
     final LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
     );
-    positionStream =
-        Geolocator.getPositionStream(locationSettings: locationSettings)
-            .listen((Position? position) async {
-      if (mounted) {
-        coordinates.clear();
-        coordinates.add(position!.latitude);
-        coordinates.add(position.longitude);
-        await readCSVFile();
-        await findClosestPosition();
-        await Future.delayed(const Duration(seconds: 60));
-      }
-    });
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+    } catch (e) {
+      return failedAlertBuilder(
+          context,
+          "Please turn your location on before continuing.",
+          "Refresh page",
+          "Return home");
+    }
+    coordinates.clear();
+    coordinates.add(position!.latitude);
+    coordinates.add(position!.longitude);
+    await readCSVFile();
+    await findClosestPosition();
+    return SizedBox();
   }
 
-  Future<void> findClosestPosition() async {
+  Future<Widget> findClosestPosition() async {
     //try {
     subwayData.sort((a, b) {
       return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
@@ -115,7 +120,13 @@ class _SubwayScreenState extends State<SubwayScreen> {
     // } catch (e) {
     //   apiCallSuccess = false;
     //   print('failure');
+    //   return failedAlertBuilder(
+    //       context,
+    //       "Real-time Subway Data is not available at this moment.",
+    //       "Refresh page",
+    //       "Return home");
     // }
+    return SizedBox();
   }
 
   Future<void> callApi() async {
