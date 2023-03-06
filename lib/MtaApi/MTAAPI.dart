@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:trip_reminder/MtaApi/Subway.dart';
 import 'package:trip_reminder/auth/secrets.dart';
 import 'package:gtfs_realtime_bindings/gtfs_realtime_bindings.dart';
 import 'package:path_provider/path_provider.dart';
@@ -40,16 +41,16 @@ class MtaApiCaller {
     'SIR': 0
   };
 
-  Future<List<List<List<String>>>> ApiIterator() async {
+  Future<List<Subway>> ApiIterator() async {
     print(lineCaller);
-    List<List<List<String>>> masterList = [];
+    List<Subway> masterList = [];
     for (String line in lineCaller) {
       for (String possibleLine in lineCounter.keys) {
         if (possibleLine.contains(line)) {
           lineCounter.update(possibleLine, (value) => value + 1);
           if (lineCounter[possibleLine]! <= 1) {
-            List<List<String>> topFourArrivals = await ApiCaller(possibleLine);
-            masterList.addAll([topFourArrivals]);
+            List<Subway> topFourArrivals = await ApiCaller(possibleLine);
+            masterList.addAll(topFourArrivals);
           }
         }
       }
@@ -57,7 +58,7 @@ class MtaApiCaller {
     return masterList;
   }
 
-  Future<List<List<String>>> ApiCaller(String line) async {
+  Future<List<Subway>> ApiCaller(String line) async {
     final url = Uri.parse(lineApi[line]!);
     final response = await http.get(url, headers: {"x-api-key": API_KEY});
     if (response.statusCode == 200) {
@@ -72,10 +73,10 @@ class MtaApiCaller {
     }
   }
 
-  Future<List<List<String>>> GTFSParser(var message) async {
+  Future<List<Subway>> GTFSParser(var message) async {
     int baselineTime = int.parse(message['header']['timestamp'].toString());
     List<dynamic> entities = message['entity'];
-    List<List<String>> lineInformation = [];
+    List<Subway> lineInformation = [];
     for (int i = 0; i < entities.length; i += 2) {
       String tripId = entities[i]['tripUpdate']['trip']['tripId'];
       String routeId = entities[i]['tripUpdate']['trip']['routeId'].toString();
@@ -99,23 +100,30 @@ class MtaApiCaller {
           }
         }
       }
-      lineInformation.addAll([prelimInfo]);
+      if (prelimInfo.length == 5) {
+        Subway trainInfo = Subway(
+            tripId: prelimInfo[0],
+            routeId: prelimInfo[1],
+            stopSequencePosition: prelimInfo[2],
+            stopId: prelimInfo[3],
+            arrivalTime: prelimInfo[4]);
+        lineInformation.add(trainInfo);
+      }
     }
     return await sortResults(lineInformation);
   }
 
-  Future<List<List<String>>> sortResults(
-      List<List<String>> lineInformation) async {
-    lineInformation.removeWhere((element) => element.length != 5);
+  Future<List<Subway>> sortResults(List<Subway> lineInformation) async {
     lineInformation.sort(
       (a, b) {
-        return int.parse(a[4]) - int.parse(b[4]);
+        return int.parse(a.arrivalTime.toString()) -
+            int.parse(b.arrivalTime.toString());
       },
     );
     if (lineInformation.length < 5) {
       return lineInformation;
     }
-    List<List<String>> topFourArrivals = lineInformation.sublist(0, 5);
+    List<Subway> topFourArrivals = lineInformation.sublist(0, 5);
     return topFourArrivals;
   }
 }

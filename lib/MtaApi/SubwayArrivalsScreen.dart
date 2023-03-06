@@ -7,6 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:csv/csv.dart';
 import 'package:trip_reminder/MtaApi/MTAAPI.dart';
 import 'package:trip_reminder/AlertDialog.dart';
+import 'package:trip_reminder/MtaApi/Subway.dart';
+import 'package:trip_reminder/MtaApi/SubwayRoute.dart';
 
 class SubwayScreen extends StatefulWidget {
   SubwayScreen({super.key});
@@ -28,7 +30,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   bool apiCallSuccess = true;
 
-  List<List<List<String>>> masterList = [];
+  List<Subway> masterList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +56,43 @@ class _SubwayScreenState extends State<SubwayScreen> {
           Text(
               key: ValueKey(apiCaller[0]),
               'Station: ${apiCaller[1] ?? ''}. Lines: ${apiCaller[2].toString().replaceAll("-", ", ") ?? ''}'),
+          subwayArrivalsBuilder(),
           alertBuilderController(),
         ]));
+  }
+
+  Widget subwayArrivalsBuilder() {
+    return FutureBuilder<List<Subway>>(
+      future: getCurrentPositionUtilityMethod(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return ListView.builder(
+              key: ObjectKey(masterList),
+              itemCount: snapshot.data!.length,
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              itemBuilder: (context, index) {
+                return Center(
+                    key: ObjectKey(masterList),
+                    child: SubwayRoute(
+                      subway: snapshot.data![index],
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SubwayRouteDetails(
+                                  subway: snapshot.data![index])),
+                        );
+                      },
+                    ));
+              });
+        } else {
+          return CircularProgressIndicator(
+            backgroundColor: Colors.white,
+          );
+        }
+      },
+    );
   }
 
   Widget alertBuilderController() {
@@ -103,6 +140,23 @@ class _SubwayScreenState extends State<SubwayScreen> {
     await readCSVFile();
     await findClosestPosition();
     return SizedBox();
+  }
+
+  Future<List<Subway>> getCurrentPositionUtilityMethod() async {
+    final LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+    );
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+    } catch (e) {}
+    coordinates.clear();
+    coordinates.add(position!.latitude);
+    coordinates.add(position!.longitude);
+    await readCSVFile();
+    await findClosestPosition();
+    return masterList;
   }
 
   Future<Widget> findClosestPosition() async {
