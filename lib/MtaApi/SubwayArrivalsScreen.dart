@@ -32,6 +32,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   List<Subway> masterList = [];
 
+  late Station station;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,6 +58,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
           Text(
               key: ValueKey(apiCaller[0]),
               'Station: ${apiCaller[1] ?? ''}. Lines: ${apiCaller[2].toString().replaceAll("-", ", ") ?? ''}'),
+          SizedBox(height: 20),
           subwayArrivalsBuilder(),
           alertBuilderController(),
         ]));
@@ -169,10 +172,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
                   coordinates[1].toDouble())
               .toInt();
     });
-    print(subwayData[0]);
-    apiCaller.clear();
-    apiCaller.addAll(subwayData[0]);
-    await callApi();
+    List<String> sortedSubwayData = subwayComparator(subwayData);
+    List<String> stationData = await callApi();
     // } catch (e) {
     //   apiCallSuccess = false;
     //   print('failure');
@@ -185,10 +186,25 @@ class _SubwayScreenState extends State<SubwayScreen> {
     return SizedBox();
   }
 
+  List<String> subwayComparator(List<List<dynamic>> subwayData) {
+    List<String> subwayDataSorted = subwayData[0][2].toString().split('-');
+    List<int> sortedStationsCount = [];
+    for (int i = 0; i < subwayData.length; i++) {
+      if (subwayData[0][3] == subwayData[i][3] &&
+          subwayData[0][4] == subwayData[i][4]) {
+        subwayDataSorted.addAll(subwayData[i][2].toString().split("-"));
+        sortedStationsCount.add(i);
+      }
+    }
+    String max = sortedStationsCount[-1].toString();
+    subwayDataSorted.add(max);
+    return subwayDataSorted;
+  }
+
   Future<void> callApi() async {
     List<String> lineCaller =
         apiCaller[2].toString().replaceAll(" ", "").split("-");
-    String stopName = apiCaller[0].toString();
+    List<String> stopName = apiCaller[0].toString();
     MtaApiCaller MTACaller =
         MtaApiCaller(lineCaller: lineCaller, apiStation: stopName);
     masterList.clear();

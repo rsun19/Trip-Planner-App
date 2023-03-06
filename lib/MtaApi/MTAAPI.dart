@@ -27,7 +27,7 @@ class MtaApiCaller {
   };
   List<String> lineCaller;
   List<dynamic> lineReturner = [];
-  String apiStation;
+  List<String> apiStation;
   MtaApiCaller({required this.lineCaller, required this.apiStation});
 
   final lineCounter = <String, int>{
@@ -64,9 +64,7 @@ class MtaApiCaller {
     if (response.statusCode == 200) {
       final message = FeedMessage.fromBuffer(response.bodyBytes);
       var messageData = message.toProto3Json();
-      //debugPrint(messageData.toString(), wrapWidth: 1024);
       print(messageData);
-      // var messageData1 = jsonDecode(messageData);
       return await GTFSParser(messageData);
     } else {
       throw HttpException("Failed to get a proper response.");
@@ -93,20 +91,31 @@ class MtaApiCaller {
               (int.parse(baseline[stop]['arrival']['time'].toString()) -
                   baselineTime);
           String stopId = baseline[stop]['stopId'];
-          if (stopId.toString().contains(this.apiStation.toString()) &&
-              arrivalTime > 0) {
-            print('true');
-            prelimInfo.add(arrivalTime.toString());
-          }
+          apiStation.forEach((station) {
+            if (stopId.toString().contains(station.toString()) &&
+                arrivalTime > 0) {
+              print('true');
+              prelimInfo.add(arrivalTime.toString());
+            }
+          });
         }
       }
       if (prelimInfo.length == 5) {
+        String direction;
+        String arrivalTimeMinutes =
+            (int.parse(prelimInfo[4]) / 60).round().toString();
+        if (prelimInfo[3].substring(3, 4) == 'N') {
+          direction = "Uptown";
+        } else {
+          direction = "Downtown";
+        }
         Subway trainInfo = Subway(
             tripId: prelimInfo[0],
             routeId: prelimInfo[1],
             stopSequencePosition: prelimInfo[2],
             stopId: prelimInfo[3],
-            arrivalTime: prelimInfo[4]);
+            direction: direction,
+            arrivalTime: arrivalTimeMinutes);
         lineInformation.add(trainInfo);
       }
     }

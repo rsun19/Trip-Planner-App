@@ -20,6 +20,42 @@ class SubwayRoute extends StatefulWidget {
 class _SubwayRouteState extends State<SubwayRoute> {
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return InkWell(
+        onTap: () {
+          widget.onTap;
+        },
+        child: Column(children: [
+          Row(children: [
+            Column(
+              children: [
+                Text(
+                  "${widget.subway.direction} ${widget.subway.routeId} train",
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            Spacer(),
+            Text(
+              "${widget.subway.arrivalTime} min",
+              style: TextStyle(color: Colors.red),
+            ),
+          ]),
+          SizedBox(height: 20)
+        ]));
+  }
+}
+
+class SubwayRouteDetails extends StatefulWidget {
+  const SubwayRouteDetails({super.key, required this.subway});
+  final Subway subway;
+
+  @override
+  State<SubwayRouteDetails> createState() => _SubwayRouteDetailsState();
+}
+
+class _SubwayRouteDetailsState extends State<SubwayRouteDetails> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold();
   }
 }
