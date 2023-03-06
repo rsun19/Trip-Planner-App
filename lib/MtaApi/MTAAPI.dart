@@ -137,10 +137,10 @@ class MtaApiCaller {
             int.parse(b.arrivalTime.toString());
       },
     );
-    if (lineInformation.length < 5) {
+    if (lineInformation.length < 10) {
       return lineInformation;
     }
-    List<Subway> topFourArrivals = lineInformation.sublist(0, 5);
+    List<Subway> topFourArrivals = lineInformation.sublist(0, 10);
     return topFourArrivals;
   }
 }

@@ -26,11 +26,9 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   List<List<dynamic>> subwayData = [];
 
-  bool apiCallSuccess = true;
-
   List<List<Subway>> masterList = [];
 
-  late Station station; // = Station(routeId: [], stopId: [], stationCode: '');
+  late Station station; //= Station(routeId: [], stopId: [], stationName: []);
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +52,6 @@ class _SubwayScreenState extends State<SubwayScreen> {
                     label: Text('Click for real-time data'))),
           ]),
           stationBuilder(),
-          SizedBox(
-              height: MediaQuery.of(context).size.height - 500,
-              width: MediaQuery.of(context).size.width,
-              child: alertBuilderController()),
         ]));
   }
 
@@ -99,20 +93,6 @@ class _SubwayScreenState extends State<SubwayScreen> {
         }
       },
     );
-  }
-
-  Widget alertBuilderController() {
-    ValueKey(apiCallSuccess);
-    if (apiCallSuccess == false) {
-      apiCallSuccess = true;
-      return failedAlertBuilder(
-          context,
-          "Real-time Subway Data is not available at this moment.",
-          "Refresh page",
-          "Return home");
-    } else {
-      return SizedBox();
-    }
   }
 
   Future<Widget> getCurrentPosition() async {
@@ -157,34 +137,32 @@ class _SubwayScreenState extends State<SubwayScreen> {
   }
 
   Future<Widget> findClosestPosition() async {
-    try {
-      subwayData.sort((a, b) {
-        return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
-                    coordinates[1].toDouble())
-                .toInt() -
-            Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
-                    coordinates[1].toDouble())
-                .toInt();
-      });
-      List<List<String>> sortedSubwayData = subwayComparator(subwayData);
-      List<String> stationData = returnStations(subwayData, sortedSubwayData);
-      List<String> stationName =
-          returnStationNames(subwayData, sortedSubwayData);
-      sortedSubwayData.removeLast();
-      station = Station(
-          routeId: sortedSubwayData,
-          stopId: stationData,
-          stationName: stationName);
-      await callApi(station);
-    } catch (e) {
-      apiCallSuccess = false;
-      print('failure');
-      return failedAlertBuilder(
-          context,
-          "Real-time Subway Data is not available at this moment.",
-          "Refresh page",
-          "Return home");
-    }
+    //try {
+    subwayData.sort((a, b) {
+      return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
+                  coordinates[1].toDouble())
+              .toInt() -
+          Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
+                  coordinates[1].toDouble())
+              .toInt();
+    });
+    List<List<String>> sortedSubwayData = subwayComparator(subwayData);
+    List<String> stationData = returnStations(subwayData, sortedSubwayData);
+    List<String> stationName = returnStationNames(subwayData, sortedSubwayData);
+    sortedSubwayData.removeLast();
+    station = Station(
+        routeId: sortedSubwayData,
+        stopId: stationData,
+        stationName: stationName);
+    await callApi(station);
+    // } catch (e) {
+    //   print('failure');
+    //   return failedAlertBuilder(
+    //       context,
+    //       "Real-time Subway Data is not available at this moment.",
+    //       "Refresh page",
+    //       "Return home");
+    // }
     return SizedBox();
   }
 
@@ -199,11 +177,12 @@ class _SubwayScreenState extends State<SubwayScreen> {
               subwayData[0][4].toDouble(),
               subwayData[i][3].toDouble(),
               subwayData[i][4].toDouble()) <
-          100) {
+          600) {
         subwayDataSorted.addAll([subwayData[i][2].toString().split("-")]);
         sortedStationsCount.add(i);
       }
     }
+    subwayDataSorted.toSet().toList();
     List<String> max = [sortedStationsCount.last.toString()];
     subwayDataSorted.add(max);
     return subwayDataSorted;
@@ -214,7 +193,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
     int iterator = int.parse(sortedSubwayData.last[0]);
     List<String> output = [];
     for (int i = 0; i <= iterator; i++) {
-      output.add(subwayData[i][0]);
+      output.add(subwayData[i][0].toString());
     }
     return output;
   }
