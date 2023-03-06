@@ -26,8 +26,6 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   List<List<dynamic>> subwayData = [];
 
-  List<dynamic> apiCaller = ['', '', '', '', ''];
-
   bool apiCallSuccess = true;
 
   List<Subway> masterList = [];
@@ -56,8 +54,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
                     label: Text('Click for real-time data'))),
           ]),
           Text(
-              key: ValueKey(apiCaller[0]),
-              'Station: ${apiCaller[1] ?? ''}. Lines: ${apiCaller[2].toString().replaceAll("-", ", ") ?? ''}'),
+              key: ObjectKey(Station),
+              'Station: ${station.stationName ?? ''}. Lines: ${station.routeId.toString() ?? ''}'),
           SizedBox(height: 20),
           subwayArrivalsBuilder(),
           alertBuilderController(),
@@ -107,16 +105,6 @@ class _SubwayScreenState extends State<SubwayScreen> {
           "Real-time Subway Data is not available at this moment.",
           "Refresh page",
           "Return home");
-    } else {
-      return SizedBox();
-    }
-  }
-
-  Widget showText() {
-    if (apiCaller.isNotEmpty) {
-      return Text(
-          key: ValueKey(apiCaller[0]),
-          'Station: ${apiCaller[1]}. Lines: ${apiCaller[2].toString().replaceAll("-", ", ")}');
     } else {
       return SizedBox();
     }
@@ -173,7 +161,12 @@ class _SubwayScreenState extends State<SubwayScreen> {
               .toInt();
     });
     List<String> sortedSubwayData = subwayComparator(subwayData);
-    List<String> stationData = await callApi();
+    List<String> stationData = returnStations(sortedSubwayData);
+    station = Station(
+        routeId: sortedSubwayData,
+        stopId: stationData,
+        stationName: subwayData[0][1].toString());
+    await callApi(station);
     // } catch (e) {
     //   apiCallSuccess = false;
     //   print('failure');
@@ -201,12 +194,18 @@ class _SubwayScreenState extends State<SubwayScreen> {
     return subwayDataSorted;
   }
 
-  Future<void> callApi() async {
-    List<String> lineCaller =
-        apiCaller[2].toString().replaceAll(" ", "").split("-");
-    List<String> stopName = apiCaller[0].toString();
+  List<String> returnStations(List<String> sortedSubwayData) {
+    int iterator = int.parse(sortedSubwayData[-1]);
+    List<String> output = [];
+    for (int i = 0; i <= iterator; i++) {
+      output.add(sortedSubwayData[i][0]);
+    }
+    return output;
+  }
+
+  Future<void> callApi(Station station) async {
     MtaApiCaller MTACaller =
-        MtaApiCaller(lineCaller: lineCaller, apiStation: stopName);
+        MtaApiCaller(lineCaller: station.routeId, apiStation: station.stopId);
     masterList.clear();
     masterList = await MTACaller.ApiIterator();
   }
