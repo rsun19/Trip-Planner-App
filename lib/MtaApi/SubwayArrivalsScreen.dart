@@ -51,7 +51,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
                       getCurrentPosition();
                     },
                     icon: Icon(Icons.subway),
-                    label: Text('Click for real-time data'))),
+                    label: Text('Click to refresh'))),
           ]),
           stationBuilder(),
         ]));

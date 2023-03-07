@@ -98,7 +98,7 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
                         getCurrentPosition();
                       },
                       icon: Icon(Icons.subway),
-                      label: Text('Click for real-time data'))),
+                      label: Text('Click to refresh'))),
             ]),
             subwayArrivalsBuilder()
           ])),
@@ -120,9 +120,8 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
                 return Center(
                     key: ObjectKey(widget.masterList),
                     child: SubwayRouteDetails(
-                      station: widget.station,
-                      subwayData: widget.masterList,
-                      index: index,
+                      stationData: widget.stationName,
+                      subwayData: widget.masterList[index],
                     ));
               });
         } else {
@@ -209,14 +208,13 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
 }
 
 class SubwayRouteDetails extends StatefulWidget {
-  const SubwayRouteDetails(
-      {super.key,
-      required this.subwayData,
-      required this.station,
-      required this.index});
-  final List<Subway> subwayData;
-  final Station station;
-  final int index;
+  const SubwayRouteDetails({
+    super.key,
+    required this.subwayData,
+    required this.stationData,
+  });
+  final Subway subwayData;
+  final StationName stationData;
 
   @override
   State<SubwayRouteDetails> createState() => _SubwayRouteDetailsState();
@@ -232,7 +230,7 @@ class _SubwayRouteDetailsState extends State<SubwayRouteDetails> {
           Column(
             children: [
               Text(
-                "${widget.subwayData[widget.index].direction} ${widget.subwayData[widget.index].routeId} train",
+                "${widget.subwayData.direction} ${widget.subwayData.routeId} train",
                 style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
               ),
             ],
@@ -241,7 +239,7 @@ class _SubwayRouteDetailsState extends State<SubwayRouteDetails> {
           Icon(Icons.wifi),
           SizedBox(width: 10),
           Text(
-            "${widget.subwayData[widget.index].arrivalTime} min",
+            "${widget.subwayData.arrivalTime} min",
             style: TextStyle(color: Colors.red),
           ),
         ])
