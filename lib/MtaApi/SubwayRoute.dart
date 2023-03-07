@@ -52,7 +52,7 @@ class _SubwayRouteState extends State<SubwayRoute> {
         );
       },
       child: SizedBox(
-          height: 100,
+          height: 130,
           child: Column(children: [
             Text(
               "${widget.stationNames.stationName}",

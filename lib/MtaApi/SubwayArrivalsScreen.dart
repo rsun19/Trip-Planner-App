@@ -197,7 +197,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
           .toString();
       distanceFromPosition.add(distanceBetween);
       _coordinates.addAll([
-        [_subwayData[i][3], _subwayData[i][4]]
+        [_subwayData[i][3].toString(), _subwayData[i][4].toString()]
       ]);
     }
     return _coordinates;
