@@ -188,24 +188,24 @@ class _ProfileState extends State<Profile> {
                   return flutter_osm_map_big();
                 }))
           ]),
-          floatingActionButton: TextButton(
-            style: ButtonStyle(
-              backgroundColor: MaterialStateProperty.all<Color>(Colors.red),
-              padding:
-                  MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(10)),
-            ),
-            child: Text(
-              'Change itinerary name or location',
-              style: TextStyle(color: Colors.white),
-            ),
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChangeTripName(trip: widget.trip),
-                  ));
-            },
-          ),
+          // floatingActionButton: TextButton(
+          //   style: ButtonStyle(
+          //     backgroundColor: MaterialStateProperty.all<Color>(Colors.red),
+          //     padding:
+          //         MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(10)),
+          //   ),
+          //   child: Text(
+          //     'Change itinerary name or location',
+          //     style: TextStyle(color: Colors.white),
+          //   ),
+          //   onPressed: () {
+          //     Navigator.push(
+          //         context,
+          //         MaterialPageRoute(
+          //           builder: (context) => ChangeTripName(trip: widget.trip),
+          //         ));
+          //   },
+          // ),
         ));
   }
 

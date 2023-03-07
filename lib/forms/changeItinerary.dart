@@ -80,15 +80,11 @@ class _ChangeTripNameState extends State<ChangeTripName> {
                   final String tripName = _controller.text;
                   final String tripLocation = _locationinput.text;
                   Database db = await UserDatabase.instance.database;
-                  print(tripName);
-                  print(tripLocation);
-                  print(widget.trip.title);
-                  print(widget.trip.location);
                   await db.rawUpdate(
-                      'UPDATE eventPlanner SET tripName = ? AND tripLocation = ? WHERE tripName = ? AND tripLocation = ?',
+                      "UPDATE ${UserDatabase.table2} SET ${UserDatabase.columnTripName} = ? AND ${UserDatabase.columnTripLocation} = ? WHERE ${UserDatabase.columnTripName} = ? AND ${UserDatabase.columnTripLocation} = ?",
                       [
-                        tripName,
-                        tripLocation,
+                        tripName.toString(),
+                        tripLocation.toString(),
                         widget.trip.title,
                         widget.trip.location
                       ]);
