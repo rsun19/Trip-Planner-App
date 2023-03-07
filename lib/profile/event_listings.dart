@@ -115,29 +115,69 @@ class _ProfileState extends State<Profile> {
                     future: sortedList(),
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
-                        return ListView.builder(
-                            key: ObjectKey(TripEvent),
-                            itemCount: snapshot.data!.length,
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                            itemBuilder: (context, index) {
-                              return Center(
-                                child: eventInfo(
-                                  tripevent: snapshot.data![index],
-                                  trip: widget.trip,
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) => EventView(
-                                              trip: widget.trip,
-                                              tripevent:
-                                                  snapshot.data![index])),
+                        return Column(children: [
+                          SizedBox(height: 10),
+                          Text(
+                            "Upcoming Events",
+                            style: TextStyle(color: Colors.white, fontSize: 25),
+                          ),
+                          Expanded(
+                              child: ListView.builder(
+                                  //physics: AlwaysScrollableScrollPhysics(),
+                                  key: ObjectKey(TripEvent),
+                                  itemCount: eventSortedDates.length,
+                                  shrinkWrap: true,
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                                  itemBuilder: (context, index) {
+                                    return Center(
+                                      child: EventInfo(
+                                        tripevent: eventSortedDates[index],
+                                        trip: widget.trip,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) => EventView(
+                                                    trip: widget.trip,
+                                                    tripevent: eventSortedDates[
+                                                        index])),
+                                          );
+                                        },
+                                      ),
                                     );
-                                  },
-                                ),
-                              );
-                            });
+                                  })),
+                          Text(
+                            "Passed Events",
+                            style: TextStyle(color: Colors.white, fontSize: 25),
+                          ),
+                          Expanded(
+                              child: ListView.builder(
+                                  //physics: AlwaysScrollableScrollPhysics(),
+                                  key: ObjectKey(TripEvent),
+                                  itemCount: eventPassedDates.length,
+                                  shrinkWrap: true,
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                                  itemBuilder: (context, index) {
+                                    return Center(
+                                      child: EventInfo(
+                                        tripevent: eventPassedDates[index],
+                                        trip: widget.trip,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) => EventView(
+                                                    trip: widget.trip,
+                                                    tripevent: eventPassedDates[
+                                                        index])),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  }))
+                        ]);
                       } else {
                         return CircularProgressIndicator();
                       }
@@ -170,9 +210,7 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<List<TripEvent>> sortedList() async {
-    String currentDay =
-        DateTime.now().toIso8601String().split('T')[0].toString() +
-            'T00:00:00.000';
+    String currentDay = DateTime.now().toIso8601String();
     eventSortedDates.clear();
     eventPassedDates.clear();
     Database db = await UserDatabase.instance.database;
@@ -197,19 +235,23 @@ class _ProfileState extends State<Profile> {
       return a.dateTime.compareTo(b.dateTime);
     });
     for (var each in eventSortedDates) {
-      if (each.dateTime.compareTo(currentDay) < 1) {
+      if (each.dateTime.compareTo(currentDay) < 0) {
         eventPassedDates.add(each);
       }
     }
-    List<TripEvent> sentEvents = [];
+    // List<TripEvent> sentEvents = [];
     eventSortedDates.removeWhere((e) => eventPassedDates.contains(e));
-    for (var each in eventPassedDates) {
-      eventSortedDates.add(each);
-    }
-    for (var each in eventSortedDates) {
-      sentEvents.add(each);
-    }
-    return sentEvents;
+    // for (var each in eventPassedDates) {
+    //   eventSortedDates.add(each);
+    // }
+    // for (var each in eventSortedDates) {
+    //   sentEvents.add(each);
+    // }
+    // for (var each in eventPassedDates) {
+    //   sentEvents.add(each);
+    // }
+    await eventParser();
+    return eventSortedDates;
   }
 
   Widget eventMenu() {
@@ -291,14 +333,18 @@ class _ProfileState extends State<Profile> {
     for (int i = 1; i <= count; i++) {
       final maps =
           await db.query(UserDatabase.table, where: 'id=?', whereArgs: [i]);
-      var location = maps[0]['location'].toString();
-      List<dynamic> _location = location.split(",");
-      allEvents.add(Marker(
-        point: LatLng(double.parse(_location[0]), double.parse(_location[1])),
-        width: 80,
-        height: 80,
-        builder: (context) => Icon(Icons.location_pin),
-      ));
+      if (maps[0]['tripNameEvent'] == widget.trip.title &&
+          maps[0]['tripLocationEvent'] == widget.trip.location) {
+        var location = maps[0]['location'].toString();
+        List<dynamic> _location = location.split(",");
+        print(_location);
+        allEvents.add(Marker(
+          point: LatLng(double.parse(_location[0]), double.parse(_location[1])),
+          width: 80,
+          height: 80,
+          builder: (context) => Icon(Icons.location_pin),
+        ));
+      }
     }
     _position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
@@ -310,12 +356,13 @@ class _ProfileState extends State<Profile> {
         builder: ((context) => Icon(Icons.circle)),
       ),
     );
+    print(allEvents);
     return allEvents;
   }
 }
 
-class eventInfo extends StatefulWidget {
-  const eventInfo({
+class EventInfo extends StatefulWidget {
+  const EventInfo({
     super.key,
     required this.tripevent,
     required this.trip,
@@ -327,10 +374,10 @@ class eventInfo extends StatefulWidget {
   final Trip trip;
 
   @override
-  State<eventInfo> createState() => _eventInfoState();
+  State<EventInfo> createState() => _EventInfoState();
 }
 
-class _eventInfoState extends State<eventInfo> {
+class _EventInfoState extends State<EventInfo> {
   @override
   late List dateTimeList = widget.tripevent.dateTime.split('T');
   late var _date = DateFormat("yyyy-MM-dd").parse(dateTimeList[0]);

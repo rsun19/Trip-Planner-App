@@ -62,6 +62,7 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
   final _formKey = GlobalKey<FormState>();
   @override
   State<UserBasicInfo> createState() => _UserBasicInfoState();
+  String convertedDate = '';
 
   @override
   void initState() {
@@ -139,7 +140,9 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                           lastDate: DateTime(3000))
                       .then((selectedDate) {
                     if (selectedDate != null) {
-                      _dateInput.text = selectedDate.toIso8601String();
+                      _dateInput.text =
+                          selectedDate.toString().substring(0, 10).toString();
+                      convertedDate = selectedDate.toIso8601String();
                     }
                   });
                 }),
@@ -176,7 +179,7 @@ class _UserBasicInfoState extends State<UserBasicInfo> {
                   final String description = _controllerDescription.text;
                   final String location = _controllerLocation.text;
                   final String fullAddress = _controllerLocation.text;
-                  final String date = _dateInput.text;
+                  final String date = convertedDate;
                   final String time = _timeinput.text;
                   final String tripName = widget.trip.title.toString();
                   final String tripLocation = widget.trip.location.toString();

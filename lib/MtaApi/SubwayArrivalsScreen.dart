@@ -39,6 +39,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        backgroundColor: Colors.lightBlue,
         appBar: AppBar(
           backgroundColor: Colors.lightBlue,
           title: Text(
@@ -51,11 +52,16 @@ class _SubwayScreenState extends State<SubwayScreen> {
             SizedBox(
                 height: 100,
                 child: TextButton.icon(
-                    onPressed: () {
-                      getCurrentPosition();
-                    },
-                    icon: Icon(Icons.subway),
-                    label: Text('Click to refresh'))),
+                  onPressed: () {
+                    getCurrentPosition();
+                  },
+                  icon: Icon(
+                    Icons.subway,
+                    color: Colors.white,
+                  ),
+                  label: Text('Click to refresh',
+                      style: TextStyle(color: Colors.white)),
+                )),
           ]),
           stationBuilder(),
         ]));
@@ -67,31 +73,34 @@ class _SubwayScreenState extends State<SubwayScreen> {
       future: getCurrentPositionUtilityMethod(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return ListView.builder(
-              itemCount: snapshot.data!.length,
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              itemBuilder: (context, index) {
-                return Center(
-                    child: SubwayRoute(
-                  station: station,
-                  subwayData: masterList[index],
-                  stationNames: snapshot.data![index],
-                  fullStationData: fullStationData,
-                  distanceData: distanceFromPosition[index],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => SubwayListBuilder(
-                              station: station,
-                              masterList: masterList[index],
-                              stationName: snapshot.data![index],
-                              fullStationData: fullStationData)),
-                    );
-                  },
-                ));
-              });
+          return Expanded(
+              child: ListView.builder(
+                  itemCount: snapshot.data!.length,
+                  shrinkWrap: true,
+                  physics: AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  itemBuilder: (context, index) {
+                    return Center(
+                        child: SubwayRoute(
+                      station: station,
+                      subwayData: masterList[index],
+                      stationNames: snapshot.data![index],
+                      //fullStationData: fullStationData,
+                      distanceData: distanceFromPosition[index],
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SubwayListBuilder(
+                                    station: station,
+                                    masterList: masterList[index],
+                                    stationName: snapshot.data![index],
+                                    //fullStationData: fullStationData
+                                  )),
+                        );
+                      },
+                    ));
+                  }));
         } else {
           return CircularProgressIndicator(
             backgroundColor: Colors.white,

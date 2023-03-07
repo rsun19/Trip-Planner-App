@@ -111,7 +111,7 @@ class MtaApiCaller {
             });
           }
         }
-        if (prelimInfo.length == 5) {
+        if (prelimInfo.length == 7) {
           String direction;
           String arrivalTimeMinutes =
               (int.parse(prelimInfo[4]) / 60).round().toString();
@@ -131,7 +131,9 @@ class MtaApiCaller {
               baselineTime: prelimInfo[6]);
           lineInformation.add(trainInfo);
         }
-      } catch (e) {}
+      } catch (e) {
+        print(e);
+      }
     }
     return await sortResults(lineInformation);
   }

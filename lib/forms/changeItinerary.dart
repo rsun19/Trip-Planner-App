@@ -37,6 +37,13 @@ class _ChangeTripNameState extends State<ChangeTripName> {
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
         children: <Widget>[
           Container(
+              margin: EdgeInsets.only(top: 60),
+              child: Text(
+                "Change your Itinerary Name",
+                style: TextStyle(fontSize: 25),
+              )),
+          Container(
+            margin: EdgeInsets.only(top: 10),
             child: TextFormField(
                 controller: _controller,
                 decoration: const InputDecoration(
@@ -73,6 +80,10 @@ class _ChangeTripNameState extends State<ChangeTripName> {
                   final String tripName = _controller.text;
                   final String tripLocation = _locationinput.text;
                   Database db = await UserDatabase.instance.database;
+                  print(tripName);
+                  print(tripLocation);
+                  print(widget.trip.title);
+                  print(widget.trip.location);
                   await db.rawUpdate(
                       'UPDATE eventPlanner SET tripName = ? AND tripLocation = ? WHERE tripName = ? AND tripLocation = ?',
                       [

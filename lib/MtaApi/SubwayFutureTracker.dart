@@ -1,19 +1,7 @@
 import 'package:csv/csv.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/src/widgets/container.dart';
-import 'package:flutter/src/widgets/framework.dart';
-
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:trip_reminder/database/user_info.dart';
-import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/MtaApi/Subway.dart';
-import 'package:trip_reminder/MtaApi/SubwayArrivalsScreen.dart';
-
-import 'package:geolocator/geolocator.dart';
-import 'package:trip_reminder/AlertDialog.dart';
-
-import 'MTAAPI.dart';
 import 'package:intl/intl.dart';
 
 class FutureSubwayTracker extends StatefulWidget {
@@ -35,7 +23,12 @@ class _FutureSubwayTrackerState extends State<FutureSubwayTracker> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Stops"),
+      ),
+      body: TimeBuilder(),
+    );
   }
 
   Widget TimeBuilder() {
@@ -68,11 +61,20 @@ class _FutureSubwayTrackerState extends State<FutureSubwayTracker> {
     return await compareData(currentDates);
   }
 
+  String getDay(int day) {
+    if (day == 6) {
+      return "Saturday";
+    } else if (day == 7) {
+      return "Sunday";
+    } else {
+      return "Weekday";
+    }
+  }
+
   List<String> findDay() {
     DateTime date = DateTime.now();
-    String weekday = DateFormat.EEEE(date).toString();
-    String weekdayCase =
-        "${weekday[0].toUpperCase()}${weekday.substring(1).toLowerCase()}";
+    int weekday = date.weekday;
+    String weekdayCase = getDay(weekday);
     String currentTime = DateFormat("h:mm:ss a").format(date).toString();
     return [weekdayCase, currentTime];
   }
@@ -85,27 +87,51 @@ class _FutureSubwayTrackerState extends State<FutureSubwayTracker> {
     stopTimes.removeAt(0);
   }
 
+  String convertTo24Hours(String date) {
+    List<String> dateParsed = date.trim().split(":");
+    if (dateParsed[2].contains("AM")) {
+      return "0000-00-00T${dateParsed[0]}:${dateParsed[1]}:00.000Z";
+    } else {
+      return "0000-00-00T${(int.parse(dateParsed[0]) + 12).toString()}:${dateParsed[1]}:00.000Z";
+    }
+  }
+
   Future<List<List<dynamic>>> compareData(List<String> currentData) async {
     stopTimes.retainWhere((station) =>
-        currentData[0].toString() == station[0].toString() &&
-        widget.subwayData.tripId == station[2].toString().substring(3, 14));
-    DateTime addedTime = DateTime.parse(widget.subwayData.baselineTime)
-        .add(Duration(seconds: int.parse(widget.subwayData.arrivalTime)));
+        currentData[0].toString().trim().toLowerCase() ==
+        station[1].toString().trim().toLowerCase());
+    print(stopTimes);
+    print(widget.subwayData.tripId);
+    stopTimes.retainWhere((station) => station[2]
+        .toString()
+        .trim()
+        .toLowerCase()
+        .contains(widget.subwayData.tripId.trim().toLowerCase()));
+    DateTime addedTime =
+        DateTime.parse(convertTo24Hours(widget.subwayData.baselineTime))
+            .add(Duration(seconds: int.parse(widget.subwayData.arrivalTime)));
     String stopTime = '';
+    print(stopTimes);
+    print(addedTime);
     stopTimes.forEach((station) {
       if (station[5].toString() == widget.subwayData.fullStopId) {
-        stopTime = station[3].toString();
+        stopTime = convertTo24Hours(station[3].toString());
         int index = stopTimes.indexOf(station);
         stopTimes = stopTimes.sublist(index + 1);
       }
     });
-    final comparedTime = DateTime.parse(stopTime).difference(addedTime);
+    print('here');
+    final comparedTime =
+        DateTime.parse(convertTo24Hours(stopTime)).difference(addedTime);
+    print('here');
     int difference = comparedTime.inSeconds;
     stopTimes.forEach((times) {
-      times[3] = DateTime.parse(times[3].toString())
+      times[3] = DateTime.parse(convertTo24Hours(times[3].toString()))
           .add(Duration(minutes: difference));
-      times[3] = DateFormat.Hm(times[3].toString());
+      times[3] = DateFormat.Hm(convertTo24Hours(times[3].toString()));
     });
+    print("here");
+    print(stopTimes);
     return stopTimes;
   }
 }

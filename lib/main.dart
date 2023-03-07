@@ -405,29 +405,31 @@ class _HomeState extends State<Home> {
         future: _sortList,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            return ListView.builder(
-                key: ObjectKey(Trip),
-                itemCount: snapshot.data!.length,
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                itemBuilder: (context, index) {
-                  return Center(
-                      key: ObjectKey(Trip),
-                      child: TripRoute(
-                        trip: snapshot.data![index],
-                        firebaseUser: widget.firebaseUser,
-                        onTap: () {
-                          compareTimes(snapshot.data![index].title,
-                              snapshot.data![index].location);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    Profile(trip: snapshot.data![index])),
-                          );
-                        },
-                      ));
-                });
+            return Expanded(
+                child: ListView.builder(
+                    key: ObjectKey(Trip),
+                    itemCount: snapshot.data!.length,
+                    shrinkWrap: true,
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                    itemBuilder: (context, index) {
+                      return Center(
+                          key: ObjectKey(Trip),
+                          child: TripRoute(
+                            trip: snapshot.data![index],
+                            firebaseUser: widget.firebaseUser,
+                            onTap: () {
+                              compareTimes(snapshot.data![index].title,
+                                  snapshot.data![index].location);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        Profile(trip: snapshot.data![index])),
+                              );
+                            },
+                          ));
+                    }));
           } else {
             return CircularProgressIndicator(
               backgroundColor: Colors.white,
@@ -599,27 +601,30 @@ class _HomeState extends State<Home> {
                                 .snapshots(),
                             builder: (context, snapshot) {
                               if (snapshot.hasData) {
-                                return ListView.builder(
-                                    itemCount: snapshot.data!.docs.length,
-                                    shrinkWrap: true,
-                                    padding:
-                                        const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                                    itemBuilder: (context, index) {
-                                      return Center(
-                                          child: ItineraryRoute(
-                                        trip: snapshot.data!.docs[index],
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    EventRoute(
-                                                        trip: snapshot.data!
-                                                            .docs[index])),
-                                          );
-                                        },
-                                      ));
-                                    });
+                                return Expanded(
+                                    child: ListView.builder(
+                                        itemCount: snapshot.data!.docs.length,
+                                        shrinkWrap: true,
+                                        physics:
+                                            AlwaysScrollableScrollPhysics(),
+                                        padding: const EdgeInsets.fromLTRB(
+                                            20, 0, 20, 0),
+                                        itemBuilder: (context, index) {
+                                          return Center(
+                                              child: ItineraryRoute(
+                                            trip: snapshot.data!.docs[index],
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        EventRoute(
+                                                            trip: snapshot.data!
+                                                                .docs[index])),
+                                              );
+                                            },
+                                          ));
+                                        }));
                               } else {
                                 return CircularProgressIndicator(
                                   backgroundColor: Colors.white,
@@ -684,8 +689,8 @@ class _HomeState extends State<Home> {
     } else {
       return ElevatedButton(
         onPressed: () {
-          // positionStream!.cancel();
-          // currentMapController.dispose();
+          positionStream!.cancel();
+          currentMapController.dispose();
           Navigator.push(
               this.context,
               MaterialPageRoute(

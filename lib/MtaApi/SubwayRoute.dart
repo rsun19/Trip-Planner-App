@@ -22,13 +22,13 @@ class SubwayRoute extends StatefulWidget {
       this.onTap,
       required this.station,
       required this.stationNames,
-      required this.fullStationData,
+      // required this.fullStationData,
       required this.distanceData});
   final onTap;
   final List<Subway> subwayData;
   final Station station;
   final StationName stationNames;
-  final List<List<dynamic>> fullStationData;
+  //final List<List<dynamic>> fullStationData;
   final String distanceData;
 
   @override
@@ -45,89 +45,99 @@ class _SubwayRouteState extends State<SubwayRoute> {
           context,
           MaterialPageRoute(
               builder: (context) => SubwayListBuilder(
-                  station: widget.station,
-                  masterList: widget.subwayData,
-                  stationName: widget.stationNames,
-                  fullStationData: widget.fullStationData)),
+                    station: widget.station,
+                    masterList: widget.subwayData,
+                    stationName: widget.stationNames,
+                    //fullStationData: widget.fullStationData
+                  )),
         );
       },
       child: SizedBox(
-          height: 130,
-          child: Column(children: [
-            Text(
-              "${widget.stationNames.stationName}",
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Lines: ${widget.stationNames.routeId}",
-              style: TextStyle(color: Colors.black),
-            ),
-            Text("Distance: ${widget.distanceData.substring(0, 4)} miles"),
-            TextButton.icon(
-                onPressed: () async {
-                  Position position = await Geolocator.getCurrentPosition(
-                    desiredAccuracy: LocationAccuracy.best,
-                  );
-                  markers.clear();
-                  points.clear();
-                  if (locationCoordinates.isEmpty) {
-                    locationCoordinates.add(position.latitude);
-                    locationCoordinates.add(position.longitude);
-                  }
-                  markers.add(
-                    Marker(
-                        point: LatLng(position.latitude, position.longitude),
-                        builder: ((context) => Icon(Icons.navigation))),
-                  );
-                  points.add(LatLng(position.latitude, position.longitude));
-                  await getJsonData(ORSCaller(
-                      latStart: points[0].latitude,
-                      longStart: points[0].longitude,
-                      latEnd: double.parse(
-                          widget.stationNames.stationCoordinates[0]),
-                      longEnd: double.parse(
-                          widget.stationNames.stationCoordinates[1]),
-                      tripRoute: 'foot-walking'));
-                  markers.add(
-                    Marker(
-                        point: LatLng(
+          height: 175,
+          child: Container(
+              margin: EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.white),
+                  borderRadius: BorderRadius.all(Radius.circular(20))),
+              child: Column(children: [
+                Text(
+                  "${widget.stationNames.stationName}",
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Lines: ${widget.stationNames.routeId}",
+                  style: TextStyle(color: Colors.black),
+                ),
+                Text("Distance: ${widget.distanceData.substring(0, 4)} miles"),
+                TextButton.icon(
+                    onPressed: () async {
+                      Position position = await Geolocator.getCurrentPosition(
+                        desiredAccuracy: LocationAccuracy.best,
+                      );
+                      markers.clear();
+                      points.clear();
+                      if (locationCoordinates.isEmpty) {
+                        locationCoordinates.add(position.latitude);
+                        locationCoordinates.add(position.longitude);
+                      }
+                      markers.add(
+                        Marker(
+                            point:
+                                LatLng(position.latitude, position.longitude),
+                            builder: ((context) => Icon(Icons.navigation))),
+                      );
+                      points.add(LatLng(position.latitude, position.longitude));
+                      await getJsonData(ORSCaller(
+                          latStart: points[0].latitude,
+                          longStart: points[0].longitude,
+                          latEnd: double.parse(
+                              widget.stationNames.stationCoordinates[0]),
+                          longEnd: double.parse(
+                              widget.stationNames.stationCoordinates[1]),
+                          tripRoute: 'foot-walking'));
+                      markers.add(
+                        Marker(
+                            point: LatLng(
+                                double.parse(
+                                    widget.stationNames.stationCoordinates[0]),
+                                double.parse(
+                                    widget.stationNames.stationCoordinates[1])),
+                            builder: ((context) => Icon(Icons.circle))),
+                      );
+                      points.add(
+                        LatLng(
                             double.parse(
                                 widget.stationNames.stationCoordinates[0]),
                             double.parse(
                                 widget.stationNames.stationCoordinates[1])),
-                        builder: ((context) => Icon(Icons.circle))),
-                  );
-                  points.add(
-                    LatLng(
-                        double.parse(widget.stationNames.stationCoordinates[0]),
-                        double.parse(
-                            widget.stationNames.stationCoordinates[1])),
-                  );
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HomeMap(),
-                      ));
-                },
-                icon: Icon(Icons.navigation),
-                label: Text('Navigate')),
-            SizedBox(height: 20)
-          ])),
+                      );
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HomeMap(),
+                          ));
+                    },
+                    icon: Icon(Icons.navigation),
+                    label: Text('Navigate')),
+              ]))),
     );
   }
 }
 
 class SubwayListBuilder extends StatefulWidget {
-  SubwayListBuilder(
-      {super.key,
-      required this.masterList,
-      required this.station,
-      required this.stationName,
-      required this.fullStationData});
+  SubwayListBuilder({
+    super.key,
+    required this.masterList,
+    required this.station,
+    required this.stationName,
+    //required this.fullStationData
+  });
   List<Subway> masterList;
   Station station;
   final StationName stationName;
-  final List<List<dynamic>> fullStationData;
+  //final List<List<dynamic>> fullStationData;
 
   @override
   State<SubwayListBuilder> createState() => _SubwayListBuilderState();
@@ -140,6 +150,7 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.lightBlue,
       appBar: AppBar(title: Text(widget.stationName.stationName)),
       body: SizedBox(
           height: MediaQuery.of(context).size.height,
@@ -152,8 +163,12 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
                       onPressed: () {
                         getCurrentPosition();
                       },
-                      icon: Icon(Icons.subway),
-                      label: Text('Click to refresh'))),
+                      icon: Icon(
+                        Icons.subway,
+                        color: Colors.white,
+                      ),
+                      label: Text('Click to refresh',
+                          style: TextStyle(color: Colors.white)))),
             ]),
             subwayArrivalsBuilder()
           ])),
@@ -166,29 +181,32 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
       future: subwayArrivals(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return ListView.builder(
-              key: ObjectKey(widget.masterList),
-              itemCount: snapshot.data!.length,
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              itemBuilder: (context, index) {
-                return Center(
-                    key: ObjectKey(widget.masterList),
-                    child: SubwayRouteDetails(
-                      stationData: widget.stationName,
-                      subwayData: widget.masterList[index],
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => FutureSubwayTracker(
-                                  subwayData: snapshot.data![index],
-                                  stationData: widget.stationName,
-                                  fullStationData: widget.fullStationData)),
-                        );
-                      },
-                    ));
-              });
+          return Expanded(
+              child: ListView.builder(
+                  key: ObjectKey(widget.masterList),
+                  itemCount: snapshot.data!.length,
+                  shrinkWrap: true,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  itemBuilder: (context, index) {
+                    return Center(
+                        key: ObjectKey(widget.masterList),
+                        child: SubwayRouteDetails(
+                          stationData: widget.stationName,
+                          subwayData: widget.masterList[index],
+                          //fullStationData: widget.fullStationData,
+                          //onTap: () {
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //       builder: (context) => FutureSubwayTracker(
+                          //           subwayData: snapshot.data![index],
+                          //           stationData: widget.stationName,
+                          //           fullStationData: widget.fullStationData)),
+                          // );
+                          //},
+                        ));
+                  }));
         } else {
           return CircularProgressIndicator(
             backgroundColor: Colors.white,
@@ -265,14 +283,17 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
 }
 
 class SubwayRouteDetails extends StatefulWidget {
-  const SubwayRouteDetails(
-      {super.key,
-      required this.subwayData,
-      required this.stationData,
-      required this.onTap});
+  const SubwayRouteDetails({
+    super.key,
+    required this.subwayData,
+    required this.stationData,
+    //required this.onTap,
+    //required this.fullStationData
+  });
   final Subway subwayData;
   final StationName stationData;
-  final onTap;
+  //final List<List<dynamic>> fullStationData;
+  //final onTap;
   @override
   State<SubwayRouteDetails> createState() => _SubwayRouteDetailsState();
 }
@@ -280,12 +301,15 @@ class SubwayRouteDetails extends StatefulWidget {
 class _SubwayRouteDetailsState extends State<SubwayRouteDetails> {
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-        onTap: () {
-          widget.onTap;
-        },
-        child: SizedBox(
-          height: 50,
+    return SizedBox(
+        height: 75,
+        child: Container(
+          margin: EdgeInsets.only(bottom: 20),
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.white),
+              borderRadius: BorderRadius.all(Radius.circular(20))),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Row(key: ObjectKey(widget.subwayData), children: [
               Column(
