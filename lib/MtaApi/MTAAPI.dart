@@ -61,7 +61,6 @@ class MtaApiCaller {
     if (response.statusCode == 200) {
       final message = FeedMessage.fromBuffer(response.bodyBytes);
       var messageData = message.toProto3Json();
-      //print(messageData);
       //debugPrint(messageData.toString(), wrapWidth: 1024);
       return await GTFSParser(messageData);
     } else {
@@ -101,7 +100,6 @@ class MtaApiCaller {
             apiStation.forEach((station) {
               if (stopId.toString().contains(station.toString()) &&
                   arrivalTime > 0) {
-                print('true');
                 prelimInfo.add(arrivalTime.toString());
               }
             });

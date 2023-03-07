@@ -21,3 +21,11 @@ class Station {
   const Station(
       {required this.routeId, required this.stopId, required this.stationName});
 }
+
+class StationName {
+  final List<String> routeId;
+  final String stopId;
+  final String stationName;
+  const StationName(
+      {required this.routeId, required this.stopId, required this.stationName});
+}

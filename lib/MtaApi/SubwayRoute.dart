@@ -16,18 +16,17 @@ import 'package:trip_reminder/AlertDialog.dart';
 import 'MTAAPI.dart';
 
 class SubwayRoute extends StatefulWidget {
-  const SubwayRoute(
-      {super.key,
-      required this.subwayData,
-      this.onTap,
-      required this.station,
-      required this.stationName,
-      required this.index});
+  const SubwayRoute({
+    super.key,
+    required this.subwayData,
+    this.onTap,
+    required this.station,
+    required this.stationNames,
+  });
   final onTap;
-  final List<List<Subway>> subwayData;
+  final List<Subway> subwayData;
   final Station station;
-  final String stationName;
-  final int index;
+  final StationName stationNames;
 
   @override
   State<SubwayRoute> createState() => _SubwayRouteState();
@@ -43,21 +42,20 @@ class _SubwayRouteState extends State<SubwayRoute> {
           context,
           MaterialPageRoute(
               builder: (context) => SubwayListBuilder(
-                  index: widget.index,
                   station: widget.station,
-                  subwayData: widget.subwayData,
-                  stationName: widget.stationName)),
+                  masterList: widget.subwayData,
+                  stationName: widget.stationNames)),
         );
       },
       child: SizedBox(
           height: 75,
           child: Column(children: [
             Text(
-              "${widget.stationName}",
+              "${widget.stationNames.stationName}",
               style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
             ),
             Text(
-              "Lines: ${widget.station.routeId[widget.index]}",
+              "Lines: ${widget.stationNames.routeId}",
               style: TextStyle(color: Colors.black),
             ),
             SizedBox(height: 20)
@@ -69,32 +67,25 @@ class _SubwayRouteState extends State<SubwayRoute> {
 class SubwayListBuilder extends StatefulWidget {
   SubwayListBuilder(
       {super.key,
-      required this.subwayData,
+      required this.masterList,
       required this.station,
-      required this.stationName,
-      required this.index});
-  final List<List<Subway>> subwayData;
+      required this.stationName});
+  List<Subway> masterList;
   Station station;
-  final String stationName;
-  final int index;
-
-  late List<Subway> masterList = subwayData[index];
+  final StationName stationName;
 
   @override
   State<SubwayListBuilder> createState() => _SubwayListBuilderState();
 }
 
 class _SubwayListBuilderState extends State<SubwayListBuilder> {
-  Position? position;
-
-  List<double> coordinates = [];
-
   List<List<dynamic>> subwayData = [];
+  List<String> coordinates = [];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.stationName)),
+      appBar: AppBar(title: Text(widget.stationName.stationName)),
       body: SizedBox(
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
@@ -116,6 +107,7 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
 
   Widget subwayArrivalsBuilder() {
     return FutureBuilder<List<Subway>>(
+      key: ObjectKey(widget.masterList),
       future: subwayArrivals(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
@@ -147,66 +139,14 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
   }
 
   Future<Widget> getCurrentPosition() async {
-    final LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-    );
-    try {
-      position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
-    } catch (e) {
-      return failedAlertBuilder(
-          context,
-          "Please turn your location on before continuing.",
-          "Refresh page",
-          "Return home");
-    }
-    coordinates.clear();
-    coordinates.add(position!.latitude);
-    coordinates.add(position!.longitude);
-    await readCSVFile();
+    //await readCSVFile();
     await findClosestPosition();
     return SizedBox();
   }
 
-  Future<List<String>> getCurrentPositionUtilityMethod() async {
-    final LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-    );
-    try {
-      position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
-    } catch (e) {}
-    coordinates.clear();
-    coordinates.add(position!.latitude);
-    coordinates.add(position!.longitude);
-    await readCSVFile();
-    await findClosestPosition();
-    print(widget.station.stationName);
-    return widget.station.stationName;
-  }
-
   Future<Widget> findClosestPosition() async {
     try {
-      subwayData.sort((a, b) {
-        return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
-                    coordinates[1].toDouble())
-                .toInt() -
-            Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
-                    coordinates[1].toDouble())
-                .toInt();
-      });
-      List<List<String>> sortedSubwayData = subwayComparator(subwayData);
-      List<String> stationData = returnStations(subwayData, sortedSubwayData);
-      List<String> stationName =
-          returnStationNames(subwayData, sortedSubwayData);
-      sortedSubwayData.removeLast();
-      widget.station = Station(
-          routeId: sortedSubwayData,
-          stopId: stationData,
-          stationName: stationName);
-      await callApi(widget.station);
+      await callApi();
     } catch (e) {
       print('failure');
       return failedAlertBuilder(
@@ -220,47 +160,22 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
 
   List<List<String>> subwayComparator(List<List<dynamic>> subwayData) {
     List<List<String>> subwayDataSorted = [
-      subwayData[0][2].toString().split('-')
+      subwayData[0][2].toString().split('-').toSet().toList()
     ];
-    List<int> sortedStationsCount = [];
-    for (int i = 1; i < subwayData.length; i++) {
-      if (Geolocator.distanceBetween(
-              subwayData[0][3].toDouble(),
-              subwayData[0][4].toDouble(),
-              subwayData[i][3].toDouble(),
-              subwayData[i][4].toDouble()) <
-          100) {
-        subwayDataSorted.addAll([subwayData[i][2].toString().split("-")]);
-        sortedStationsCount.add(i);
-      }
-    }
-    List<String> max = [sortedStationsCount.last.toString()];
-    subwayDataSorted.add(max);
     return subwayDataSorted;
   }
 
   List<String> returnStations(
       List<dynamic> subwayData, List<List<String>> sortedSubwayData) {
-    int iterator = int.parse(sortedSubwayData.last[0]);
-    List<String> output = [];
-    for (int i = 0; i <= iterator; i++) {
-      output.add(subwayData[i][0]);
-    }
-    return output;
+    return subwayData[0][0];
   }
 
   List<String> returnStationNames(
       List<dynamic> subwayData, List<List<String>> sortedSubwayData) {
-    int iterator = int.parse(sortedSubwayData.last[0]);
-    print(sortedSubwayData);
-    List<String> output = [];
-    for (int i = 0; i <= iterator; i++) {
-      output.add(subwayData[i][1]);
-    }
-    return output;
+    return subwayData[0][1];
   }
 
-  Future<void> callApi(Station station) async {
+  Future<void> callApi() async {
     final lineCounter = <String, int>{
       'ACE': 0,
       'BDFM': 0,
@@ -271,24 +186,20 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
       '1234567': 0,
       'SIR': 0
     };
-    List<String> lineCaller = [];
-    station.routeId.forEach((element) {
-      element.forEach((element) {
-        lineCaller.add(element);
-      });
-    });
-
     MtaApiCaller MTACaller = MtaApiCaller(
-        lineCaller: lineCaller,
-        apiStation: station.stopId,
+        lineCaller: widget.stationName.routeId,
+        apiStation: [widget.stationName.stopId],
         lineCounter: lineCounter);
     widget.masterList.clear();
     List<List<Subway>> output = await MTACaller.ApiIterator();
     widget.masterList = output[0];
+    print(output[0]);
+    print(widget.masterList);
   }
 
   Future<void> readCSVFile() async {
     subwayData.clear();
+    coordinates.clear();
     var data = await rootBundle.loadString("lib/assets/Stations.csv");
     List<List<dynamic>> csvTable = CsvToListConverter().convert(data);
     subwayData = csvTable;
@@ -316,7 +227,7 @@ class _SubwayRouteDetailsState extends State<SubwayRouteDetails> {
     return SizedBox(
       height: 50,
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Row(children: [
+        Row(key: ObjectKey(widget.subwayData), children: [
           Column(
             children: [
               Text(

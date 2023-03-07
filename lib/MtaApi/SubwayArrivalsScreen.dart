@@ -28,6 +28,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   List<List<Subway>> masterList = [];
 
+  List<StationName> stationNames = [];
+
   late Station station; //= Station(routeId: [], stopId: [], stationName: []);
 
   @override
@@ -56,35 +58,32 @@ class _SubwayScreenState extends State<SubwayScreen> {
   }
 
   Widget stationBuilder() {
-    return FutureBuilder<List<String>>(
+    return FutureBuilder<List<StationName>>(
+      key: ObjectKey(masterList),
       future: getCurrentPositionUtilityMethod(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           return ListView.builder(
-              key: ObjectKey(masterList),
               itemCount: snapshot.data!.length,
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               itemBuilder: (context, index) {
                 return Center(
-                    key: ObjectKey(masterList),
                     child: SubwayRoute(
-                      station: station,
-                      subwayData: masterList,
-                      stationName: snapshot.data![index],
-                      index: index,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => SubwayListBuilder(
-                                  index: index,
-                                  station: station,
-                                  subwayData: masterList,
-                                  stationName: snapshot.data![index])),
-                        );
-                      },
-                    ));
+                  station: station,
+                  subwayData: masterList[index],
+                  stationNames: snapshot.data![index],
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => SubwayListBuilder(
+                              station: station,
+                              masterList: masterList[index],
+                              stationName: snapshot.data![index])),
+                    );
+                  },
+                ));
               });
         } else {
           return CircularProgressIndicator(
@@ -118,7 +117,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
     return SizedBox();
   }
 
-  Future<List<String>> getCurrentPositionUtilityMethod() async {
+  Future<List<StationName>> getCurrentPositionUtilityMethod() async {
     final LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
     );
@@ -132,8 +131,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
     coordinates.add(position!.longitude);
     await readCSVFile();
     await findClosestPosition();
-    print(station.stationName);
-    return station.stationName;
+    return stationNames;
   }
 
   Future<Widget> findClosestPosition() async {
@@ -155,6 +153,14 @@ class _SubwayScreenState extends State<SubwayScreen> {
         stopId: stationData,
         stationName: stationName);
     await callApi(station);
+    stationNames.clear();
+    for (int i = 0; i < station.stationName.length; i++) {
+      StationName stationInfo = StationName(
+          routeId: station.routeId[i],
+          stopId: station.stopId[i],
+          stationName: station.stationName[i]);
+      stationNames.add(stationInfo);
+    }
     // } catch (e) {
     //   print('failure');
     //   return failedAlertBuilder(
