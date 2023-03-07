@@ -30,6 +30,10 @@ class _SubwayScreenState extends State<SubwayScreen> {
 
   List<StationName> stationNames = [];
 
+  List<List<dynamic>> fullStationData = [];
+
+  List<String> distanceFromPosition = [];
+
   late Station station; //= Station(routeId: [], stopId: [], stationName: []);
 
   @override
@@ -73,6 +77,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
                   station: station,
                   subwayData: masterList[index],
                   stationNames: snapshot.data![index],
+                  fullStationData: fullStationData,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -80,7 +85,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
                           builder: (context) => SubwayListBuilder(
                               station: station,
                               masterList: masterList[index],
-                              stationName: snapshot.data![index])),
+                              stationName: snapshot.data![index],
+                              fullStationData: fullStationData)),
                     );
                   },
                 ));
@@ -172,6 +178,20 @@ class _SubwayScreenState extends State<SubwayScreen> {
     return SizedBox();
   }
 
+  void findClosestFromPosition(
+      List<List<String>> sortedSubwayData, List<List<dynamic>> _subwayData) {
+    int iterator = int.parse(sortedSubwayData.last[0]);
+    for (int i = 0; i < iterator; i++) {
+      String distanceBetween = (Geolocator.distanceBetween(
+                  coordinates[0].toDouble(),
+                  coordinates[1].toDouble(),
+                  _subwayData[i][3],
+                  _subwayData[i][4]) *
+              0.000621371)
+          .toString();
+    }
+  }
+
   List<List<String>> subwayComparator(List<List<dynamic>> subwayData) {
     List<List<String>> subwayDataSorted = [
       subwayData[0][2].toString().split('-')
@@ -246,6 +266,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
     var data = await rootBundle.loadString("lib/assets/Stations.csv");
     List<List<dynamic>> csvTable = CsvToListConverter().convert(data);
     subwayData = csvTable;
+    fullStationData = csvTable;
     subwayData.removeAt(0);
   }
 }

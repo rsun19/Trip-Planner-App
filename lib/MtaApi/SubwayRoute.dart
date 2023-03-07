@@ -5,6 +5,7 @@ import 'package:flutter/src/widgets/framework.dart';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:trip_reminder/MtaApi/SubwayFutureTracker.dart';
 import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/MtaApi/Subway.dart';
@@ -16,17 +17,18 @@ import 'package:trip_reminder/AlertDialog.dart';
 import 'MTAAPI.dart';
 
 class SubwayRoute extends StatefulWidget {
-  const SubwayRoute({
-    super.key,
-    required this.subwayData,
-    this.onTap,
-    required this.station,
-    required this.stationNames,
-  });
+  const SubwayRoute(
+      {super.key,
+      required this.subwayData,
+      this.onTap,
+      required this.station,
+      required this.stationNames,
+      required this.fullStationData});
   final onTap;
   final List<Subway> subwayData;
   final Station station;
   final StationName stationNames;
+  final List<List<dynamic>> fullStationData;
 
   @override
   State<SubwayRoute> createState() => _SubwayRouteState();
@@ -44,7 +46,8 @@ class _SubwayRouteState extends State<SubwayRoute> {
               builder: (context) => SubwayListBuilder(
                   station: widget.station,
                   masterList: widget.subwayData,
-                  stationName: widget.stationNames)),
+                  stationName: widget.stationNames,
+                  fullStationData: widget.fullStationData)),
         );
       },
       child: SizedBox(
@@ -69,10 +72,12 @@ class SubwayListBuilder extends StatefulWidget {
       {super.key,
       required this.masterList,
       required this.station,
-      required this.stationName});
+      required this.stationName,
+      required this.fullStationData});
   List<Subway> masterList;
   Station station;
   final StationName stationName;
+  final List<List<dynamic>> fullStationData;
 
   @override
   State<SubwayListBuilder> createState() => _SubwayListBuilderState();
@@ -122,6 +127,16 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
                     child: SubwayRouteDetails(
                       stationData: widget.stationName,
                       subwayData: widget.masterList[index],
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => FutureSubwayTracker(
+                                  subwayData: snapshot.data![index],
+                                  stationData: widget.stationName,
+                                  fullStationData: widget.fullStationData)),
+                        );
+                      },
                     ));
               });
         } else {
@@ -139,7 +154,6 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
   }
 
   Future<Widget> getCurrentPosition() async {
-    //await readCSVFile();
     await findClosestPosition();
     return SizedBox();
   }
@@ -196,26 +210,17 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
     print(output[0]);
     print(widget.masterList);
   }
-
-  Future<void> readCSVFile() async {
-    subwayData.clear();
-    coordinates.clear();
-    var data = await rootBundle.loadString("lib/assets/Stations.csv");
-    List<List<dynamic>> csvTable = CsvToListConverter().convert(data);
-    subwayData = csvTable;
-    subwayData.removeAt(0);
-  }
 }
 
 class SubwayRouteDetails extends StatefulWidget {
-  const SubwayRouteDetails({
-    super.key,
-    required this.subwayData,
-    required this.stationData,
-  });
+  const SubwayRouteDetails(
+      {super.key,
+      required this.subwayData,
+      required this.stationData,
+      required this.onTap});
   final Subway subwayData;
   final StationName stationData;
-
+  final onTap;
   @override
   State<SubwayRouteDetails> createState() => _SubwayRouteDetailsState();
 }
@@ -223,27 +228,31 @@ class SubwayRouteDetails extends StatefulWidget {
 class _SubwayRouteDetailsState extends State<SubwayRouteDetails> {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 50,
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Row(key: ObjectKey(widget.subwayData), children: [
-          Column(
-            children: [
-              Text(
-                "${widget.subwayData.direction} ${widget.subwayData.routeId} train",
-                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+    return InkWell(
+        onTap: () {
+          widget.onTap;
+        },
+        child: SizedBox(
+          height: 50,
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Row(key: ObjectKey(widget.subwayData), children: [
+              Column(
+                children: [
+                  Text(
+                    "${widget.subwayData.direction} ${widget.subwayData.routeId} train",
+                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-            ],
-          ),
-          Spacer(),
-          Icon(Icons.wifi),
-          SizedBox(width: 10),
-          Text(
-            "${widget.subwayData.arrivalTime} min",
-            style: TextStyle(color: Colors.red),
-          ),
-        ])
-      ]),
-    );
+              Spacer(),
+              Icon(Icons.wifi),
+              SizedBox(width: 10),
+              Text(
+                "${widget.subwayData.arrivalTime} min",
+                style: TextStyle(color: Colors.red),
+              ),
+            ])
+          ]),
+        ));
   }
 }
