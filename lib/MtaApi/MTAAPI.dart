@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:trip_reminder/MtaApi/Subway.dart';
 import 'package:trip_reminder/auth/secrets.dart';
 import 'package:gtfs_realtime_bindings/gtfs_realtime_bindings.dart';
@@ -101,6 +102,11 @@ class MtaApiCaller {
               if (stopId.toString().contains(station.toString()) &&
                   arrivalTime > 0) {
                 prelimInfo.add(arrivalTime.toString());
+                prelimInfo.add(stopId.toString());
+                DateTime date = DateTime.now();
+                String currentTime =
+                    DateFormat("h:mm:ss a").format(date).toString();
+                prelimInfo.add(currentTime);
               }
             });
           }
@@ -120,7 +126,9 @@ class MtaApiCaller {
               stopSequencePosition: prelimInfo[2],
               stopId: prelimInfo[3],
               direction: direction,
-              arrivalTime: arrivalTimeMinutes);
+              arrivalTime: arrivalTimeMinutes,
+              fullStopId: prelimInfo[5],
+              baselineTime: prelimInfo[6]);
           lineInformation.add(trainInfo);
         }
       } catch (e) {}

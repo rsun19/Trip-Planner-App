@@ -5,13 +5,17 @@ class Subway {
   final String stopId;
   final String direction;
   final String arrivalTime;
+  final String fullStopId;
+  final String baselineTime;
   const Subway(
       {required this.tripId,
       required this.routeId,
       required this.stopSequencePosition,
       required this.stopId,
       required this.direction,
-      required this.arrivalTime});
+      required this.arrivalTime,
+      required this.fullStopId,
+      required this.baselineTime});
 }
 
 class Station {
