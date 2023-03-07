@@ -135,6 +135,7 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
   }
 
   Future<List<Subway>> subwayArrivals() async {
+    await getCurrentPosition();
     return widget.masterList;
   }
 
