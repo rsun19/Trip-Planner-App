@@ -1,12 +1,5 @@
-import 'package:csv/csv.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/src/widgets/container.dart';
-import 'package:flutter/src/widgets/framework.dart';
-
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:trip_reminder/MtaApi/SubwayFutureTracker.dart';
-import 'package:trip_reminder/database/user_info.dart';
 import 'package:trip_reminder/main.dart';
 import 'package:trip_reminder/MtaApi/Subway.dart';
 import 'package:trip_reminder/MtaApi/SubwayArrivalsScreen.dart';
@@ -15,6 +8,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:trip_reminder/AlertDialog.dart';
 
 import 'MTAAPI.dart';
+import 'package:flutter_map/flutter_map.dart';
+
+import 'package:latlong2/latlong.dart';
+import 'package:trip_reminder/api-ORS/openRouteService.dart';
+import 'package:trip_reminder/main.dart';
+import 'package:trip_reminder/ExpandedNavigationServices.dart';
 
 class SubwayRoute extends StatefulWidget {
   const SubwayRoute(
@@ -23,12 +22,14 @@ class SubwayRoute extends StatefulWidget {
       this.onTap,
       required this.station,
       required this.stationNames,
-      required this.fullStationData});
+      required this.fullStationData,
+      required this.distanceData});
   final onTap;
   final List<Subway> subwayData;
   final Station station;
   final StationName stationNames;
   final List<List<dynamic>> fullStationData;
+  final String distanceData;
 
   @override
   State<SubwayRoute> createState() => _SubwayRouteState();
@@ -51,7 +52,7 @@ class _SubwayRouteState extends State<SubwayRoute> {
         );
       },
       child: SizedBox(
-          height: 75,
+          height: 100,
           child: Column(children: [
             Text(
               "${widget.stationNames.stationName}",
@@ -61,6 +62,55 @@ class _SubwayRouteState extends State<SubwayRoute> {
               "Lines: ${widget.stationNames.routeId}",
               style: TextStyle(color: Colors.black),
             ),
+            Text("Distance: ${widget.distanceData.substring(0, 4)} miles"),
+            TextButton.icon(
+                onPressed: () async {
+                  Position position = await Geolocator.getCurrentPosition(
+                    desiredAccuracy: LocationAccuracy.best,
+                  );
+                  markers.clear();
+                  points.clear();
+                  if (locationCoordinates.isEmpty) {
+                    locationCoordinates.add(position.latitude);
+                    locationCoordinates.add(position.longitude);
+                  }
+                  markers.add(
+                    Marker(
+                        point: LatLng(position.latitude, position.longitude),
+                        builder: ((context) => Icon(Icons.navigation))),
+                  );
+                  points.add(LatLng(position.latitude, position.longitude));
+                  await getJsonData(ORSCaller(
+                      latStart: points[0].latitude,
+                      longStart: points[0].longitude,
+                      latEnd: double.parse(
+                          widget.stationNames.stationCoordinates[0]),
+                      longEnd: double.parse(
+                          widget.stationNames.stationCoordinates[1]),
+                      tripRoute: 'foot-walking'));
+                  markers.add(
+                    Marker(
+                        point: LatLng(
+                            double.parse(
+                                widget.stationNames.stationCoordinates[0]),
+                            double.parse(
+                                widget.stationNames.stationCoordinates[1])),
+                        builder: ((context) => Icon(Icons.circle))),
+                  );
+                  points.add(
+                    LatLng(
+                        double.parse(widget.stationNames.stationCoordinates[0]),
+                        double.parse(
+                            widget.stationNames.stationCoordinates[1])),
+                  );
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HomeMap(),
+                      ));
+                },
+                icon: Icon(Icons.navigation),
+                label: Text('Navigate')),
             SizedBox(height: 20)
           ])),
     );
@@ -204,6 +254,8 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
         lineCaller: widget.stationName.routeId,
         apiStation: [widget.stationName.stopId],
         lineCounter: lineCounter);
+    print(widget.stationName.routeId);
+    print([widget.stationName.stopId]);
     widget.masterList.clear();
     List<List<Subway>> output = await MTACaller.ApiIterator();
     widget.masterList = output[0];

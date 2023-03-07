@@ -78,6 +78,7 @@ class _SubwayScreenState extends State<SubwayScreen> {
                   subwayData: masterList[index],
                   stationNames: snapshot.data![index],
                   fullStationData: fullStationData,
+                  distanceData: distanceFromPosition[index],
                   onTap: () {
                     Navigator.push(
                       context,
@@ -153,6 +154,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
     List<List<String>> sortedSubwayData = subwayComparator(subwayData);
     List<String> stationData = returnStations(subwayData, sortedSubwayData);
     List<String> stationName = returnStationNames(subwayData, sortedSubwayData);
+    List<List<String>> stationCoordinates =
+        findClosestFromPosition(sortedSubwayData, subwayData);
     sortedSubwayData.removeLast();
     station = Station(
         routeId: sortedSubwayData,
@@ -164,7 +167,8 @@ class _SubwayScreenState extends State<SubwayScreen> {
       StationName stationInfo = StationName(
           routeId: station.routeId[i],
           stopId: station.stopId[i],
-          stationName: station.stationName[i]);
+          stationName: station.stationName[i],
+          stationCoordinates: stationCoordinates[i]);
       stationNames.add(stationInfo);
     }
     // } catch (e) {
@@ -178,18 +182,25 @@ class _SubwayScreenState extends State<SubwayScreen> {
     return SizedBox();
   }
 
-  void findClosestFromPosition(
+  List<List<String>> findClosestFromPosition(
       List<List<String>> sortedSubwayData, List<List<dynamic>> _subwayData) {
     int iterator = int.parse(sortedSubwayData.last[0]);
-    for (int i = 0; i < iterator; i++) {
+    distanceFromPosition.clear();
+    List<List<String>> _coordinates = [];
+    for (int i = 0; i <= iterator; i++) {
       String distanceBetween = (Geolocator.distanceBetween(
-                  coordinates[0].toDouble(),
-                  coordinates[1].toDouble(),
+                  double.parse(coordinates[0].toString()),
+                  double.parse(coordinates[1].toString()),
                   _subwayData[i][3],
                   _subwayData[i][4]) *
               0.000621371)
           .toString();
+      distanceFromPosition.add(distanceBetween);
+      _coordinates.addAll([
+        [_subwayData[i][3], _subwayData[i][4]]
+      ]);
     }
+    return _coordinates;
   }
 
   List<List<String>> subwayComparator(List<List<dynamic>> subwayData) {

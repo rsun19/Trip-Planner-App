@@ -30,6 +30,10 @@ class StationName {
   final List<String> routeId;
   final String stopId;
   final String stationName;
+  final List<String> stationCoordinates;
   const StationName(
-      {required this.routeId, required this.stopId, required this.stationName});
+      {required this.routeId,
+      required this.stopId,
+      required this.stationName,
+      required this.stationCoordinates});
 }
