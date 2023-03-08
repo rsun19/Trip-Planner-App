@@ -151,43 +151,44 @@ class _SubwayScreenState extends State<SubwayScreen> {
   }
 
   Future<Widget> findClosestPosition() async {
-    //try {
-    subwayData.sort((a, b) {
-      return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
-                  coordinates[1].toDouble())
-              .toInt() -
-          Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
-                  coordinates[1].toDouble())
-              .toInt();
-    });
-    List<List<String>> sortedSubwayData = subwayComparator(subwayData);
-    List<String> stationData = returnStations(subwayData, sortedSubwayData);
-    List<String> stationName = returnStationNames(subwayData, sortedSubwayData);
-    List<List<String>> stationCoordinates =
-        findClosestFromPosition(sortedSubwayData, subwayData);
-    sortedSubwayData.removeLast();
-    station = Station(
-        routeId: sortedSubwayData,
-        stopId: stationData,
-        stationName: stationName);
-    await callApi(station);
-    stationNames.clear();
-    for (int i = 0; i < station.stationName.length; i++) {
-      StationName stationInfo = StationName(
-          routeId: station.routeId[i],
-          stopId: station.stopId[i],
-          stationName: station.stationName[i],
-          stationCoordinates: stationCoordinates[i]);
-      stationNames.add(stationInfo);
+    try {
+      subwayData.sort((a, b) {
+        return Geolocator.distanceBetween(a[3], a[4], coordinates[0].toDouble(),
+                    coordinates[1].toDouble())
+                .toInt() -
+            Geolocator.distanceBetween(b[3], b[4], coordinates[0].toDouble(),
+                    coordinates[1].toDouble())
+                .toInt();
+      });
+      List<List<String>> sortedSubwayData = subwayComparator(subwayData);
+      List<String> stationData = returnStations(subwayData, sortedSubwayData);
+      List<String> stationName =
+          returnStationNames(subwayData, sortedSubwayData);
+      List<List<String>> stationCoordinates =
+          findClosestFromPosition(sortedSubwayData, subwayData);
+      sortedSubwayData.removeLast();
+      station = Station(
+          routeId: sortedSubwayData,
+          stopId: stationData,
+          stationName: stationName);
+      await callApi(station);
+      stationNames.clear();
+      for (int i = 0; i < station.stationName.length; i++) {
+        StationName stationInfo = StationName(
+            routeId: station.routeId[i],
+            stopId: station.stopId[i],
+            stationName: station.stationName[i],
+            stationCoordinates: stationCoordinates[i]);
+        stationNames.add(stationInfo);
+      }
+    } catch (e) {
+      print('failure');
+      return failedAlertBuilder(
+          context,
+          "Real-time Subway Data is not available at this moment.",
+          "Refresh page",
+          "Return home");
     }
-    // } catch (e) {
-    //   print('failure');
-    //   return failedAlertBuilder(
-    //       context,
-    //       "Real-time Subway Data is not available at this moment.",
-    //       "Refresh page",
-    //       "Return home");
-    // }
     return SizedBox();
   }
 

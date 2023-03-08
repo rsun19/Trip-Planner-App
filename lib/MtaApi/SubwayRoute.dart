@@ -258,27 +258,25 @@ class _SubwayListBuilderState extends State<SubwayListBuilder> {
   }
 
   Future<void> callApi() async {
-    final lineCounter = <String, int>{
-      'ACE': 0,
-      'BDFM': 0,
-      'G': 0,
-      'JZ': 0,
-      'NQRW': 0,
-      'L': 0,
-      '1234567': 0,
-      'SIR': 0
-    };
-    MtaApiCaller MTACaller = MtaApiCaller(
-        lineCaller: widget.stationName.routeId,
-        apiStation: [widget.stationName.stopId],
-        lineCounter: lineCounter);
-    print(widget.stationName.routeId);
-    print([widget.stationName.stopId]);
-    widget.masterList.clear();
-    List<List<Subway>> output = await MTACaller.ApiIterator();
-    widget.masterList = output[0];
-    print(output[0]);
-    print(widget.masterList);
+    try {
+      final lineCounter = <String, int>{
+        'ACE': 0,
+        'BDFM': 0,
+        'G': 0,
+        'JZ': 0,
+        'NQRW': 0,
+        'L': 0,
+        '1234567': 0,
+        'SIR': 0
+      };
+      MtaApiCaller MTACaller = MtaApiCaller(
+          lineCaller: widget.stationName.routeId,
+          apiStation: [widget.stationName.stopId],
+          lineCounter: lineCounter);
+      widget.masterList.clear();
+      List<List<Subway>> output = await MTACaller.ApiIterator();
+      widget.masterList = output[0];
+    } catch (e) {}
   }
 }
 
