@@ -10,7 +10,7 @@ This repository is a lot of commits BEHIND. I will update it the next time I hav
 
 ## KNOWN BUGS:
 
-- Trouble signing in with Apple Sign-In on certain devices. Please test using Google Sign-In services if the is the case.
+- Trouble signing in with Apple Sign-In on certain devices. Please test using Google Sign-In services if this the case.
 
 - Itineraries mysteriously gets deleted when stored locally. Will investigate further.
 
