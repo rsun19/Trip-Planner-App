@@ -10,17 +10,13 @@ This repository is a lot of commits BEHIND. I will update it the next time I hav
 
 ## KNOWN BUGS:
 
-- Trouble signing in with Apple Sign-In on certain devices. Please test using Google Sign-In services if this is the case.
-
-- Itineraries mysteriously gets deleted when stored locally. Will investigate further.
-
-- Name change functionality isn't working. UI is being uncoorporative. Will fix when I get the chance.
+- The navigation feature would often save previous users' starting location when routing multiple times, which creates multiple markers.
 
 ## To-Do list
 
 - Beta Test App
 
-- Add features --> A big problem is that users cannot delete online itineraries when it isn't stored locally anymore. 
+- Add ChatGPT integration and better search-bar functionality
 
 - Publish to the App Store
 
@@ -34,4 +30,4 @@ This repository is a lot of commits BEHIND. I will update it the next time I hav
 </p>
 
 ## License
-MIT License
+Due to the phase of this app, no license will be given as of now. This should change in the future.
